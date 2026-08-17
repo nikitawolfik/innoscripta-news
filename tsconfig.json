@@ -3,5 +3,14 @@
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  // Not used for compilation (this is a solution-style config, `files` is empty).
+  // The shadcn CLI resolves its `components.json` aliases from the root tsconfig,
+  // so the `~/*` mapping is duplicated here to stop it writing to a literal `~/`
+  // directory. Keep in sync with tsconfig.app.json.
+  "compilerOptions": {
+    "paths": {
+      "~/*": ["./src/*"]
+    }
+  }
 }
