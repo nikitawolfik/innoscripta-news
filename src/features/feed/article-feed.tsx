@@ -11,6 +11,7 @@ import { FeedError } from "~/features/feed/feed-error";
 import { FeedPausedFooter } from "~/features/feed/feed-paused-footer";
 import { FeedSkeleton, FeedSkeletonRow } from "~/features/feed/feed-skeleton";
 import {
+  DESKTOP_MEDIA_QUERY,
   ROW_HEIGHT_DESKTOP,
   ROW_HEIGHT_MOBILE,
 } from "~/features/feed/row-height";
@@ -21,7 +22,6 @@ import type { Filters } from "~/types/filters";
 import type { SourceId } from "~/types/source";
 
 const OVERSCAN = 6;
-const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
 
 type PausedState = {
   source: SourceId;

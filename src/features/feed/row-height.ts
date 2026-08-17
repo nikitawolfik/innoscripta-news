@@ -17,6 +17,18 @@ export const ROW_HEIGHT_DESKTOP = 192;
 export const ROW_HEIGHT_CLASS = "h-80 md:h-48";
 
 /**
+ * Mirrors Tailwind's `md:` breakpoint, which compiles to `(width >= 48rem)`.
+ *
+ * Written in rem rather than the equivalent 768px on purpose: rem resolves
+ * against the root font size, so a reader who raises their browser's default
+ * font keeps CSS and this query on the same side of the boundary. With `768px`
+ * here they diverge — at a 20px root, `48rem` is 960px, so an 800px viewport
+ * renders mobile cards (320px tall) while the virtualizer positions rows 192px
+ * apart and they overlap.
+ */
+export const DESKTOP_MEDIA_QUERY = "(min-width: 48rem)";
+
+/**
  * Exactly two lines at each breakpoint: 2 x leading-5 (40px) on mobile,
  * 2 x leading-6 (48px) from md up. `shrink-0` is load-bearing — without it a
  * flex parent can compress the box below two lines while `line-clamp-2` still
