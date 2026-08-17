@@ -119,19 +119,50 @@ It's written **once** and mounted by three thin adapters — a Vite dev plugin, 
 Vercel function, and a small Node server for the Docker image — so the routing
 table can't drift between environments.
 
+The handler does exactly four things: route `/api/<source>/*` to an upstream,
+attach the secret, pass errors through without leaking anything, and set cache
+headers. It holds no state and has no logic worth unit-testing on its own —
+deliberately, see below.
+
+### This proxy is a workaround, not an architecture
+
+It exists because these three APIs are awkward in specific ways: one refuses
+browser origins outright, all three need secrets attached server-side, each
+meters requests differently, and each returns a different shape. A production
+system would put a proper backend here instead — one service owning the upstream
+integrations, with a shared persistent cache so a given query is fetched once for
+all users rather than once per process. That alone would largely dissolve the
+rate-limit problem, since quota would be consumed against a warm shared cache
+rather than per browser session, and it would let normalization happen once
+server-side instead of in every client. That service is out of scope for a
+frontend take-home, so what's here is the minimum server-side surface that makes
+a client-only app viable.
+
+An earlier iteration went further — an in-process response cache and a
+per-source circuit breaker that parked a rate-limited source until its
+`Retry-After` window elapsed. Both were removed. They were an overreach: real
+caching and quota management belong in the backend described above, where they'd
+be shared across users and survive restarts, rather than half-solved per process
+in a frontend project. Server-side state that only works on one long-lived
+instance is a liability, not a feature — it behaves differently on Vercel than in
+Docker, and it invites you to trust a guarantee it can't actually make.
+
 ### Rate limits
 
 The free tiers are metered, and NYT's is strict: **5 requests per minute**, 500
-per day. Rather than design around that with fewer features, it's handled in
-layers:
+per day. That's handled where it belongs for this project — on the client, which
+is the part being built:
 
-- the proxy caches responses (in-process TTL, plus `s-maxage` so a CDN collapses
-  duplicate upstream calls)
-- a per-source circuit breaker parks a source that returns `429` until its
-  `Retry-After` window elapses, so a rate-limited source generates **zero**
-  further upstream traffic
+- upstream `429`s are passed through verbatim, `Retry-After` included, so the
+  feed can pause, count down and resume on its own
+- rate limits are never retried; exponential backoff against a quota makes the
+  problem worse, and the server already said when to come back
+- pagination stops requesting while a source is cooling down, so an infinite
+  scroll can't turn one `429` into a request storm
 - the search input is debounced and TanStack Query holds results `stale` for
   five minutes
+- successful responses carry `s-maxage`, so a CDN in front of the deployment
+  collapses duplicate upstream calls across users
 
 A rate-limited source degrades the feed rather than breaking it: the other two
 keep rendering, and the UI names the paused source with a live countdown.
@@ -199,6 +230,10 @@ and the virtualization.
 - **Row heights are fixed constants, not measured.** This keeps virtualization
   jitter-free at the cost of clamping titles and descriptions and reserving a
   fixed image slot.
+- **The proxy carries no unit tests.** Testing effort is spent on the frontend,
+  which is what this project is. The proxy has no branching logic worth pinning
+  down, and the behaviour that matters — a source rate-limiting or failing while
+  the others keep rendering — is covered end-to-end where a user would see it.
 
 ---
 
