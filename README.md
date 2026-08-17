@@ -331,12 +331,12 @@ hourly — and unrunnable by anyone without their own API keys.
 | Phase | Scope                                      | Status  |
 | ----- | ------------------------------------------ | ------- |
 | P0    | Tooling, aliases, routing shell, theming   | ✅ Done |
-| P1    | Proxy handler + dev/Vercel/Docker adapters | 🚧      |
-| P2    | `Article` model + Guardian client          | 🚧      |
-| P3    | Infinite query + virtualized feed          | 🚧      |
-| P4    | NYT + NewsAPI + capability matrix          | 🚧      |
-| P5    | Filter bar, URL-driven `/`                 | 🚧      |
-| P6    | Preferences-driven `/feed`                 | 🚧      |
+| P1    | Proxy handler + dev/Vercel/Docker adapters | ✅ Done |
+| P2    | `Article` model + Guardian client          | ✅ Done |
+| P3    | Infinite query + virtualized feed          | ✅ Done |
+| P4    | NYT + NewsAPI + capability matrix          | ✅ Done |
+| P5    | Filter bar, URL-driven `/`                 | ✅ Done |
+| P6    | Preferences-driven `/feed`                 | ✅ Done |
 | P7    | Article detail page                        | 🚧      |
 | P8    | Docker, Vercel, documentation              | 🚧      |
 | P9    | Unit, component and e2e test suites        | 🚧      |
