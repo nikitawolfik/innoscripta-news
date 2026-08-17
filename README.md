@@ -217,6 +217,32 @@ reported `totalResults` (which happily claims 21,000 hits), and NewsAPI opts out
 more than one category, a category combined with a date range, or a range older
 than the plan window.
 
+### NYT's Article Search is intermittently empty
+
+Article Search returns **HTTP 200 with `hits: 0` and `docs: null`** for requests
+that succeed moments earlier or later. The same query — a bare `sort=newest`, a
+plain `q=technology` — alternates between ~10,000 hits and nothing, with no
+error, no `429`, and no `Retry-After` to act on.
+
+It is not quota exhaustion: in a single run, NYT's Most Popular endpoint
+returned 20 articles while Article Search returned zero on the same key. Nor is
+it query syntax: NYT's own documented `fq` example behaves the same way, and the
+flakiness extends beyond search — a Top Stories section returned "Section not
+found" in one request and 29 articles in the next.
+
+Two consequences shape the code:
+
+- **`docs: null` is parsed as an empty page, not a failure.** Rejecting it would
+  turn a routine empty response into "NYT is unavailable" for the reader.
+- **The feed degrades per source rather than failing.** An empty or failing NYT
+  leaves Guardian and NewsAPI rendering, with the notice naming what dropped out.
+
+Top Stories and Most Popular are more reliable, but they accept no query
+parameters at all — no keyword, no date range, no author, no pagination — so
+they cannot serve the filtering the brief asks for. Substituting them would
+trade a source that occasionally returns nothing for one that can never honour a
+filter.
+
 **Why NewsAPI sits out the unfiltered feed.** With no keyword and no category
 there is no query NewsAPI will accept, so it is excluded from the default feed
 and the notice says it needs a keyword or category. The obvious alternative was

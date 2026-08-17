@@ -40,6 +40,26 @@ Object.defineProperty(window, "innerWidth", {
 });
 Element.prototype.getBoundingClientRect = () => BOUNDING_RECT;
 
+// Radix primitives (Popover, DropdownMenu, Sheet) touch layout APIs jsdom
+// does not implement: ResizeObserver for positioning, pointer capture for
+// dismissable layers, scrollIntoView for menu item focus.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver =
+  globalThis.ResizeObserver ?? (ResizeObserverStub as typeof ResizeObserver);
+Element.prototype.hasPointerCapture =
+  Element.prototype.hasPointerCapture ?? (() => false);
+Element.prototype.setPointerCapture =
+  Element.prototype.setPointerCapture ?? (() => undefined);
+Element.prototype.releasePointerCapture =
+  Element.prototype.releasePointerCapture ?? (() => undefined);
+Element.prototype.scrollIntoView =
+  Element.prototype.scrollIntoView ?? (() => undefined);
+
 // jsdom does not implement matchMedia, which useMediaQuery relies on.
 Object.defineProperty(window, "matchMedia", {
   writable: true,

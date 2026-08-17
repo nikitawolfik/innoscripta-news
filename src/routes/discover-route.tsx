@@ -1,13 +1,19 @@
 import { ArticleFeed } from "~/features/feed/article-feed";
+import { FilterBar } from "~/features/filters/filter-bar";
+import { useUrlFilters } from "~/hooks/use-url-filters";
 import { DEFAULT_FILTERS } from "~/types/filters";
 
 export function DiscoverRoute() {
+  const [filters, setFilters] = useUrlFilters();
+
   return (
     <section>
       <h1 className="sr-only">Discover</h1>
-      {/* FilterBar with URL-backed filters arrives in P5; until then the feed
-          renders with the defaults. */}
-      <ArticleFeed filters={DEFAULT_FILTERS} />
+      <FilterBar filters={filters} setFilters={setFilters} />
+      <ArticleFeed
+        filters={filters}
+        onResetFilters={() => setFilters(DEFAULT_FILTERS)}
+      />
     </section>
   );
 }
