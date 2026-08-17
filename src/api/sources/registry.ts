@@ -1,10 +1,14 @@
 import { guardianClient } from "~/api/sources/guardian";
+import { newsApiClient } from "~/api/sources/newsapi";
+import { nytClient } from "~/api/sources/nyt";
 import type { SourceClient, SourceFailure } from "~/api/types";
 import type { Filters } from "~/types/filters";
 
-// NYT and NewsAPI join in P4; the feed code is written against the list, not
-// against any individual client.
-export const SOURCES: SourceClient[] = [guardianClient];
+export const SOURCES: SourceClient[] = [
+  newsApiClient,
+  guardianClient,
+  nytClient,
+];
 
 export type SourcePartition = {
   eligible: SourceClient[];
@@ -22,14 +26,19 @@ export function partitionSources(filters: Filters): SourcePartition {
   const eligible: SourceClient[] = [];
   const excluded: SourceFailure[] = [];
 
+  // Each client explains itself. The registry deliberately holds no opinion
+  // about why a source opted out — a second copy of that reasoning here drifts
+  // from the client's the moment an API's constraints change.
   for (const sourceClient of selectedSources) {
-    if (sourceClient.supports(filters)) {
+    const reason = sourceClient.unsupportedReason(filters);
+
+    if (reason === null) {
       eligible.push(sourceClient);
     } else {
       excluded.push({
         source: sourceClient.id,
         reason: "excluded",
-        detail: `${sourceClient.label} cannot honour the selected filters`,
+        detail: reason,
       });
     }
   }

@@ -49,7 +49,7 @@ function renderFeed() {
   return render(
     <QueryClientProvider client={createQueryClient()}>
       <MemoryRouter>
-        <ArticleFeed filters={DEFAULT_FILTERS} />
+        <ArticleFeed filters={{ ...DEFAULT_FILTERS, sources: ["guardian"] }} />
       </MemoryRouter>
     </QueryClientProvider>,
   );

@@ -77,7 +77,7 @@ function initialCursor(filters: Filters): SourceCursor {
   return cursor;
 }
 
-async function fetchArticlesBatch(
+export async function fetchArticlesBatch(
   filters: Filters,
   cursor: SourceCursor,
 ): Promise<ArticlesBatch> {

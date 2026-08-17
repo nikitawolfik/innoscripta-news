@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RateLimitError } from "~/api/errors";
@@ -13,15 +10,10 @@ import {
 } from "~/api/sources/guardian";
 import { DEFAULT_RETRY_AFTER_MS, MAX_RETRY_AFTER_MS } from "~/lib/retry-after";
 import { DEFAULT_FILTERS, type Filters } from "~/types/filters";
+import guardianSearchFixtureJson from "../../../tests/fixtures/guardian-search.json";
 
-// Resolved from the project root: under the jsdom environment import.meta.url
-// is not a file: URL, so it cannot anchor a filesystem path.
-const guardianSearchFixture = JSON.parse(
-  readFileSync(
-    path.resolve(process.cwd(), "tests/fixtures/guardian-search.json"),
-    "utf8",
-  ),
-) as {
+/** Captured from a real Guardian search response. */
+const guardianSearchFixture = guardianSearchFixtureJson as {
   response: {
     results: unknown[];
     currentPage: number;

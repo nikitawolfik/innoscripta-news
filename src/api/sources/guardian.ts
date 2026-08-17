@@ -1,6 +1,7 @@
 import { format, parseISO } from "date-fns";
 
-import { RateLimitError, SourceUnavailableError } from "~/api/errors";
+import { SourceUnavailableError } from "~/api/errors";
+import { readSourceJson } from "~/api/read-source-response";
 import {
   guardianContentSchema,
   guardianSearchResponseSchema,
@@ -13,7 +14,7 @@ import type {
   SourceCapabilities,
   SourceClient,
 } from "~/api/types";
-import { parseRetryAfter } from "~/lib/retry-after";
+import { mapCategoriesForSource } from "~/lib/categories";
 import type { Article } from "~/types/article";
 import type { Filters } from "~/types/filters";
 
@@ -44,7 +45,7 @@ export const guardianClient: SourceClient = {
   id: SOURCE_ID,
   label: SOURCE_LABEL,
   capabilities: CAPABILITIES,
-  supports: () => true,
+  unsupportedReason: () => null,
   search: searchGuardian,
   fetchById: fetchGuardianById,
 };
@@ -138,7 +139,12 @@ function buildSearchParams(
   }
 
   if (filters.categories.length > 0) {
-    searchParams.set("section", filters.categories.join(FILTER_OR_SEPARATOR));
+    searchParams.set(
+      "section",
+      mapCategoriesForSource(filters.categories, SOURCE_ID).join(
+        FILTER_OR_SEPARATOR,
+      ),
+    );
   }
 
   if (authorTags.length > 0) {
@@ -236,19 +242,5 @@ function mapGuardianContent(content: GuardianContent): Article {
 }
 
 async function readJson(response: Response): Promise<unknown> {
-  if (response.status === 429) {
-    throw new RateLimitError(
-      SOURCE_ID,
-      parseRetryAfter(response.headers.get("Retry-After")),
-    );
-  }
-
-  if (!response.ok) {
-    throw new SourceUnavailableError(
-      SOURCE_ID,
-      `Guardian upstream returned ${response.status}`,
-    );
-  }
-
-  return response.json();
+  return readSourceJson(response, SOURCE_ID);
 }

@@ -190,6 +190,44 @@ The tempting alternative, fetching anyway and filtering in JavaScript, is
 deliberately avoided: it silently empties pages, which makes an infinite scroll
 think it has reached the end while the user stares at a near-blank screen.
 
+### NewsAPI's free tier is the most constrained of the three
+
+Its limits are not documented in one place and several of them only surface as
+errors partway through using the app, so they are worth listing. All were
+verified against the live API:
+
+| Limit                                                             | Behaviour                                                                       |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `/everything` requires `q`, `sources` or `domains`                | A request with none of them returns **400**                                     |
+| `/top-headlines` requires `category`, `country`, `sources` or `q` | Likewise **400**                                                                |
+| Category is only available on `/top-headlines`                    | `/everything` has no category parameter and silently ignores one                |
+| `/top-headlines` ignores `from`/`to`                              | Returns **200** with date-unfiltered results — wrong answers, no error          |
+| Developer plan caps results at **100**                            | Result 101 onwards returns **426** `maximumResultsReached`                      |
+| Developer plan reaches back **~1 month**                          | Older ranges return **426** `parameterInvalid`; 23 days back works, 38 does not |
+
+Two of these are silent rather than loud, which makes them the dangerous ones:
+an ignored date range returns plausible-looking wrong articles, and the
+100-result ceiling does not appear until a reader has scrolled that far and the
+source abruptly drops out mid-feed.
+
+The client therefore declares what it cannot do up front rather than failing
+mid-request. `hasMore` is capped at the plan ceiling instead of trusting the
+reported `totalResults` (which happily claims 21,000 hits), and NewsAPI opts out
+— with a specific, actionable reason shown in the UI — when asked for an author,
+more than one category, a category combined with a date range, or a range older
+than the plan window.
+
+**Why NewsAPI sits out the unfiltered feed.** With no keyword and no category
+there is no query NewsAPI will accept, so it is excluded from the default feed
+and the notice says it needs a keyword or category. The obvious alternative was
+to fall back to `/top-headlines?language=en`, which works and would keep all
+three sources present on first load. It was rejected because it changes what the
+feed _is_: `/top-headlines` returns an editorially curated front page, while
+Guardian and NYT return reverse-chronological search results. Merging the two
+produces a feed sorted by date whose NewsAPI entries were chosen on a different
+basis entirely — inconsistent, and impossible to explain to a reader. Excluding
+the source and saying so is the honest version.
+
 ---
 
 ## On the UI layer

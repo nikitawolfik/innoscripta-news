@@ -1,0 +1,44 @@
+{
+  "status": "OK",
+  "copyright": "Copyright (c) 2026 The New York Times Company. All Rights Reserved.",
+  "response": {
+    "docs": [
+      {
+        "_id": "nyt://article/798697fc-12fc-5fed-a4db-ac3b0739a741",
+        "web_url": "https://www.nytimes.com/2026/08/17/theater/benevolent-review.html",
+        "snippet": "A new play at IATI Theater.",
+        "abstract": "Sophie McIntosh's new play opens in the East Village.",
+        "lead_paragraph": "The lights go down on a bare stage.",
+        "headline": { "main": "A Quiet Play With a Loud Heart" },
+        "pub_date": "2026-08-17T09:00:04+0000",
+        "section_name": "Theater",
+        "byline": { "original": "By Juan A. Ramírez" },
+        "multimedia": {
+          "caption": "Livvy Marcus, left, and Mia Fowler in “Benevolent.”",
+          "credit": "Nina Goodheart",
+          "default": {
+            "url": "https://static01.nyt.com/images/2026/08/17/multimedia/17cul-benevolent/17cul-benevolent-articleLarge.jpg"
+          },
+          "thumbnail": {
+            "url": "https://static01.nyt.com/images/2026/08/17/multimedia/17cul-benevolent/17cul-benevolent-thumbStandard.jpg"
+          }
+        }
+      },
+      {
+        "_id": "nyt://article/11111111-2222-3333-4444-555555555555",
+        "web_url": "https://www.nytimes.com/2026/08/16/us/politics/senate-vote.html",
+        "snippet": "The vote fell along party lines.",
+        "abstract": "",
+        "lead_paragraph": "Senators returned to Washington on Sunday.",
+        "headline": { "main": "Senate Returns for a Rare Weekend Vote" },
+        "pub_date": "2026-08-16T18:30:00+0000",
+        "section_name": "U.S."
+      }
+    ],
+    "metadata": {
+      "hits": 10000,
+      "offset": 0,
+      "time": 530
+    }
+  }
+}

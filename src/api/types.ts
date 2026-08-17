@@ -22,7 +22,13 @@ export type SourceClient = {
   id: SourceId;
   label: string;
   capabilities: SourceCapabilities;
-  supports: (filters: Filters) => boolean;
+  /**
+   * `null` when the source can honour the filters, otherwise a reader-facing
+   * sentence explaining why it cannot. The reason is surfaced verbatim in the
+   * excluded-sources notice, so it has to say what the user could change —
+   * "NewsAPI needs a keyword or category", not "unsupported filters".
+   */
+  unsupportedReason: (filters: Filters) => string | null;
   search: (filters: Filters, page: number) => Promise<SearchResult>;
   fetchById: ((id: string) => Promise<Article | null>) | null;
 };
