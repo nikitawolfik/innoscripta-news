@@ -1,0 +1,45 @@
+{
+  "response": {
+    "status": "ok",
+    "userTier": "developer",
+    "total": 2,
+    "startIndex": 1,
+    "pageSize": 20,
+    "currentPage": 1,
+    "pages": 1,
+    "orderBy": "newest",
+    "results": [
+      {
+        "id": "technology/2024/jan/01/ai-future-2024",
+        "type": "article",
+        "sectionId": "technology",
+        "sectionName": "Technology",
+        "webPublicationDate": "2024-01-01T10:00:00Z",
+        "webTitle": "AI in 2024: What to Expect",
+        "webUrl": "https://www.theguardian.com/technology/2024/jan/01/ai-future-2024",
+        "apiUrl": "https://content.guardianapis.com/technology/2024/jan/01/ai-future-2024",
+        "fields": {
+          "trailText": "A look ahead at artificial intelligence.",
+          "thumbnail": "https://media.guim.co.uk/example/thumbnail.jpg",
+          "byline": "Jane Smith",
+          "body": "<p>Full article body.</p>"
+        },
+        "isHosted": false
+      },
+      {
+        "id": "world/2024/feb/02/climate-talks",
+        "type": "article",
+        "sectionId": "world",
+        "sectionName": "World news",
+        "webPublicationDate": "2024-02-02T12:30:00Z",
+        "webTitle": "Climate talks resume",
+        "webUrl": "https://www.theguardian.com/world/2024/feb/02/climate-talks",
+        "apiUrl": "https://content.guardianapis.com/world/2024/feb/02/climate-talks",
+        "fields": {
+          "trailText": "Diplomats gather for another round."
+        },
+        "isHosted": false
+      }
+    ]
+  }
+}

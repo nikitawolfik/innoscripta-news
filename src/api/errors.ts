@@ -1,0 +1,28 @@
+import type { SourceId } from "~/types/source";
+
+export class SourceError extends Error {
+  readonly source: SourceId;
+
+  constructor(source: SourceId, message: string) {
+    super(message);
+    this.name = "SourceError";
+    this.source = source;
+  }
+}
+
+export class RateLimitError extends SourceError {
+  readonly retryAfterMs: number;
+
+  constructor(source: SourceId, retryAfterMs: number) {
+    super(source, `${source} is rate-limited`);
+    this.name = "RateLimitError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+export class SourceUnavailableError extends SourceError {
+  constructor(source: SourceId, message = `${source} is unavailable`) {
+    super(source, message);
+    this.name = "SourceUnavailableError";
+  }
+}
