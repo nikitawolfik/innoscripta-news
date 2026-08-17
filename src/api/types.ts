@@ -26,3 +26,8 @@ export type SourceClient = {
   search: (filters: Filters, page: number) => Promise<SearchResult>;
   fetchById: ((id: string) => Promise<Article | null>) | null;
 };
+
+export type SourceFailure =
+  | { source: SourceId; reason: "rate_limited"; retryAt: number }
+  | { source: SourceId; reason: "unavailable" }
+  | { source: SourceId; reason: "excluded"; detail: string };

@@ -12,11 +12,14 @@ export class SourceError extends Error {
 
 export class RateLimitError extends SourceError {
   readonly retryAfterMs: number;
+  /** Absolute timestamp the countdown UI ticks toward. */
+  readonly retryAt: number;
 
   constructor(source: SourceId, retryAfterMs: number) {
     super(source, `${source} is rate-limited`);
     this.name = "RateLimitError";
     this.retryAfterMs = retryAfterMs;
+    this.retryAt = Date.now() + retryAfterMs;
   }
 }
 
