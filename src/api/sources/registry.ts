@@ -47,7 +47,9 @@ export function partitionSources(filters: Filters): SourcePartition {
 }
 
 export function getSourceLabel(sourceId: string): string {
-  const sourceClient = SOURCES.find((candidate) => candidate.id === sourceId);
+  return getSourceClient(sourceId)?.label ?? sourceId;
+}
 
-  return sourceClient?.label ?? sourceId;
+export function getSourceClient(sourceId: string): SourceClient | null {
+  return SOURCES.find((candidate) => candidate.id === sourceId) ?? null;
 }

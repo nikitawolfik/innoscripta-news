@@ -8,7 +8,7 @@ Built with React 19, TypeScript, Vite and Tailwind CSS v4.
 
 > **Status: in progress.** The build is phased, and sections are marked ✅ built
 > or 🚧 planned so nothing here overstates what currently runs. Everything below
-> is working today except the article detail page and the end-to-end suite.
+> is working today except the end-to-end suite.
 
 ---
 
@@ -84,7 +84,7 @@ Filter state → URL search params on "/", Zustand on "/feed"
 | ------------------- | ------------------- | --------------------------------------------------------------- |
 | `/`                 | URL search params   | Search and browse everything. Shareable — the URL is the state  |
 | `/feed`             | Zustand (persisted) | Personalized feed; the filter bar **is** the preferences editor |
-| `/post/:source/:id` | —                   | Article detail — 🚧 route exists, page not built yet            |
+| `/post/:source/:id` | —                   | Article detail; `id` is base64url-encoded (see below)           |
 
 Both feed routes render the **same** `<FilterBar>` and `<ArticleFeed>`. They
 differ only in which adapter hook supplies the `[filters, setFilters]` tuple —
@@ -187,6 +187,38 @@ A rate-limited source degrades the feed rather than breaking it: the other two
 keep rendering, and the UI names the paused source with a live countdown.
 
 ---
+
+## Why article ids are encoded in the URL
+
+Article links look like `/post/guardian/d29ybGQvMjAyNi9hdWcvMTgv…` rather than
+carrying the source's own identifier. That is deliberate.
+
+Because the merge happens **on the frontend**, one route has to address articles
+from every source — and the three disagree about what an id even is:
+
+| Source   | Native id                                                                       |
+| -------- | ------------------------------------------------------------------------------- |
+| Guardian | `world/2026/aug/18/europe-wildfires` — a path, full of slashes                  |
+| NYT      | `nyt://article/798697fc-12fc-5fed-a4db-ac3b0739a741` — contains a scheme, `://` |
+| NewsAPI  | no id at all; only the article URL, itself full of `/`, `?` and `#`             |
+
+Dropped into a path segment, each breaks in its own way: Guardian's slashes turn
+one segment into five, NYT's `://` is mangled differently by Vite's dev server,
+nginx-style path normalization and Vercel's router, and a raw URL brings query
+and fragment delimiters that end the path early. Percent-encoding helps but is
+not reliably preserved — several layers normalize `%2F` back to `/` before the
+router sees it.
+
+So ids are **base64url-encoded into one opaque, uniform token**: no slashes, no
+scheme, no reserved characters, identical in shape whatever the source. The
+route stays a plain `/post/:source/:id`, and `encodeArticleId` /
+`decodeArticleId` are a tested round-trip pair — the tests cover exactly the
+slash and `://` cases that motivated it.
+
+The trade-off is readability: the URL no longer shows the article slug. For a
+shared link that is a fair price for one that survives three routers and three
+id formats, and an undecodable token degrades to "article not found" rather
+than a crash.
 
 ## Handling three APIs that disagree
 
@@ -409,6 +441,6 @@ hourly — and unrunnable by anyone without their own API keys.
 | P4    | NYT + NewsAPI + capability matrix          | ✅ Done |
 | P5    | Filter bar, URL-driven `/`                 | ✅ Done |
 | P6    | Preferences-driven `/feed`                 | ✅ Done |
-| P7    | Article detail page                        | 🚧      |
+| P7    | Article detail page                        | ✅ Done |
 | P8    | Docker, Vercel, documentation              | ✅ Done |
 | P9    | Unit, component and e2e test suites        | 🚧      |

@@ -21,7 +21,7 @@ export function ExcludedSourcesNotice({ failures, onRetry }: Props) {
   return (
     <aside
       aria-live="polite"
-      className="mb-4 space-y-1 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground"
+      className="my-4 space-y-1 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground"
     >
       {failures.map((failure) => (
         <FailureLine
