@@ -6,8 +6,9 @@ virtualized feed.
 
 Built with React 19, TypeScript, Vite and Tailwind CSS v4.
 
-> **Status: in progress.** The build is phased. Sections below are marked
-> ✅ built or 🚧 planned so nothing here overstates what currently runs.
+> **Status: in progress.** The build is phased, and sections are marked ✅ built
+> or 🚧 planned so nothing here overstates what currently runs. Everything below
+> is working today except the article detail page and the end-to-end suite.
 
 ---
 
@@ -83,7 +84,7 @@ Filter state → URL search params on "/", Zustand on "/feed"
 | ------------------- | ------------------- | --------------------------------------------------------------- |
 | `/`                 | URL search params   | Search and browse everything. Shareable — the URL is the state  |
 | `/feed`             | Zustand (persisted) | Personalized feed; the filter bar **is** the preferences editor |
-| `/post/:source/:id` | —                   | Article detail                                                  |
+| `/post/:source/:id` | —                   | Article detail — 🚧 route exists, page not built yet            |
 
 Both feed routes render the **same** `<FilterBar>` and `<ArticleFeed>`. They
 differ only in which adapter hook supplies the `[filters, setFilters]` tuple —
@@ -93,6 +94,24 @@ store, which is why there's one implementation instead of two.
 
 There is no separate settings page by design. A preferences form you fill in and
 navigate away from is worse than editing your feed and watching it change.
+
+### Where the SOLID principles actually live
+
+The brief names all five, so rather than assert them, here is the file each one
+points at.
+
+| Principle                 | Where to look                                                                                                                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Single responsibility** | `src/server/` moves bytes and attaches secrets, `src/api/sources/` turns one API's shape into an `Article`, `src/features/` renders. A source client contains no React; a component never builds a URL                                                                        |
+| **Open–closed**           | Adding a fourth source is one file plus one entry in `src/api/sources/registry.ts`. The feed iterates whatever the registry says is eligible, so no feed, filter or virtualizer code changes — that is how NYT and NewsAPI were added                                         |
+| **Liskov substitution**   | Every `SourceClient` is interchangeable in the batch fetch. Differences between APIs are declared as data (`capabilities`, `unsupportedReason`), never as `if (source === "nyt")` branching in the feed                                                                       |
+| **Interface segregation** | `fetchById` is explicitly `null` for NewsAPI rather than a stub that throws, so callers can test for the capability instead of catching. `unsupportedReason` lets a source decline a filter it cannot honour without implementing it badly                                    |
+| **Dependency inversion**  | `<FilterBar>` depends on a `[filters, setFilters]` tuple, not on a router or a store. `useUrlFilters` and `usePreferenceFilters` are swappable implementations, which is why `/` and `/feed` share one component. One test suite runs against both to keep them substitutable |
+
+DRY and KISS show up mostly as things that were **removed**: an in-process cache
+and circuit breaker deleted from the proxy, a duplicated exclusion-reason table
+deleted from the registry, and three copies of the feed row height collapsed
+into one module after they drifted apart.
 
 ---
 
@@ -301,15 +320,68 @@ and the virtualization.
 
 ---
 
-## Deployment
+## Running with Docker
 
-🚧 **Planned.** The proxy handler is designed for three targets from one
-implementation:
+```bash
+cp .env.example .env    # fill in the three keys
+docker compose up --build
+```
 
-- **Docker** — multi-stage build, non-root user, keys supplied at runtime
-  (never baked into image layers)
-- **Vercel** — the handler mounted as a serverless function
-- **Local** — the handler mounted as Vite dev middleware
+Then open <http://localhost:8080>.
+
+Compose reads `.env` from the project directory. If a key is missing it stops
+with a message naming it, rather than starting a container that cannot serve
+anything.
+
+Without Compose:
+
+```bash
+docker build -t innoscripta-news .
+docker run --rm -p 8080:8080 \
+  -e NEWSAPI_KEY=... -e GUARDIAN_KEY=... -e NYT_KEY=... \
+  innoscripta-news
+```
+
+To use a different port, set `PORT` — Compose maps it to the container's 8080:
+
+```bash
+PORT=3000 docker compose up --build
+```
+
+### How the image is put together
+
+- **Multi-stage.** The build stage installs from the lockfile with `npm ci` and
+  runs the same `npm run build` used locally; the runtime stage copies only the
+  output.
+- **No `node_modules` in the final image.** The server build bundles its only
+  dependency, and `server.mjs` otherwise imports `node:` builtins alone, so the
+  runtime stage is the Node base plus roughly a megabyte of assets. Nothing is
+  installed at run time.
+- **Non-root.** Runs as the `node` user that `node:22-alpine` provides.
+- **Keys at run time only.** They are passed as environment variables and never
+  appear in a build argument or an image layer. The server validates them at
+  startup and refuses to boot without them — correct for a container, where a
+  half-working process is worse than a failed one.
+- **Health check.** Polls the app over HTTP using Node's built-in `fetch`, so
+  the image needs no `curl`.
+
+## Deploying to Vercel
+
+Import the repository, then set `NEWSAPI_KEY`, `GUARDIAN_KEY` and `NYT_KEY` as
+project environment variables. No build configuration is needed:
+`api/[...path].ts` is picked up as a function automatically, and `vercel.json`
+routes everything else to `index.html` for client-side routing.
+
+The same proxy handler runs in all three environments — Vite middleware in
+development, a Vercel function in production, and the Node server in the
+container — so the routing table cannot drift between them.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs lint, type-check, the test suite and a
+production build on every push, plus a second job that builds the Docker image
+so a broken `Dockerfile` fails in CI rather than on a reviewer's machine. No
+secrets are required: the tests mock every upstream.
 
 ---
 
@@ -338,5 +410,5 @@ hourly — and unrunnable by anyone without their own API keys.
 | P5    | Filter bar, URL-driven `/`                 | ✅ Done |
 | P6    | Preferences-driven `/feed`                 | ✅ Done |
 | P7    | Article detail page                        | 🚧      |
-| P8    | Docker, Vercel, documentation              | 🚧      |
+| P8    | Docker, Vercel, documentation              | ✅ Done |
 | P9    | Unit, component and e2e test suites        | 🚧      |
