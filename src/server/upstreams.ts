@@ -1,5 +1,11 @@
-import { getServerEnv } from "~/server/env";
-import type { SourceId } from "~/types/source";
+// Relative, with explicit extensions, unlike the rest of src/. Vercel builds
+// this directory with its own compiler settings — nodenext resolution and no
+// knowledge of the `~/` mapping — so an aliased or extensionless import fails
+// to compile there and the function is silently never deployed. Resolving
+// without a path mapping is what keeps one proxy buildable by three
+// toolchains. See the import rules in CLAUDE.md.
+import { getServerEnv } from "./env.js";
+import type { SourceId } from "../types/source.js";
 
 type QueryAuth = {
   kind: "query";
@@ -36,5 +42,8 @@ export const UPSTREAMS: Record<SourceId, Upstream> = {
 };
 
 export function isSourceId(value: string): value is SourceId {
-  return Object.hasOwn(UPSTREAMS, value);
+  // `in` rather than Object.hasOwn, which would put an ES2022 lib floor under
+  // a check that does not need one. UPSTREAMS is a module-local object literal,
+  // so there is no inherited key for the two to disagree about.
+  return value in UPSTREAMS;
 }

@@ -4,11 +4,21 @@
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
   ],
-  // Not used for compilation (this is a solution-style config, `files` is empty).
-  // The shadcn CLI resolves its `components.json` aliases from the root tsconfig,
-  // so the `~/*` mapping is duplicated here to stop it writing to a literal `~/`
-  // directory. Keep in sync with tsconfig.app.json.
+  // Not used by `tsc -b` (this is a solution-style config, `files` is empty),
+  // but it is not inert: two other tools read it.
+  //
+  // The shadcn CLI resolves its `components.json` aliases from the root
+  // tsconfig, so the `~/*` mapping is duplicated here to stop it writing to a
+  // literal `~/` directory. Keep in sync with tsconfig.app.json.
+  //
+  // Vercel compiles api/ against this file. Without `types` it cannot resolve
+  // `process`, and the function fails to build — which does not fail the
+  // deployment, so the site goes up static and every /api route 404s with
+  // nothing at request time to explain why.
   "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2022"],
+    "types": ["node"],
     "paths": {
       "~/*": ["./src/*"]
     }

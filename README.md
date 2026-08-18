@@ -570,8 +570,32 @@ The deployed preview lives at https://innoscripta-news-rose.vercel.app/.
 
 Import the repository, then set `NEWSAPI_KEY`, `GUARDIAN_KEY` and `NYT_KEY` as
 project environment variables. No build configuration is needed:
-`api/[...path].ts` is picked up as a function automatically, and `vercel.json`
-routes everything else to `index.html` for client-side routing.
+`api/proxy.ts` is picked up as a function automatically, and `vercel.json`
+sends every `/api/*` path to it and everything else to `index.html` for
+client-side routing.
+
+Both of those rewrites are load-bearing. A catch-all function file
+(`api/[...path].ts`) builds and appears in the deployment, but nothing routed
+to it — every API call returned the platform's own 404 with no clue as to why —
+so the function has a static path and the rewrite names it explicitly. Because
+that rewrite means the handler is reached at its own path rather than the
+caller's, the original path travels in a `__route` parameter that the handler
+prefers only when the pathname is not already a real `/api/<source>/…` one.
+Under Vite and in the container the pathname is authoritative and the parameter
+never appears.
+
+`src/server/` and `api/` are the one place that does not use the `~/` alias.
+Vercel compiles the function with its own compiler settings, which know
+nothing of the project's path mapping, so an aliased import there fails to
+build and the function is never deployed — with no error at request time, just
+a 404. Resolving those files without a path mapping keeps the same handler
+compilable by Vite, by the container build and by Vercel alike.
+
+All three adapters convert with the same `src/server/node-adapter.ts`. Vercel's
+Node runtime hands a function `node:http` objects rather than the Web `Request`
+and `Response` the handler takes, so exporting the handler directly threw
+`Invalid URL` on every invocation — visible only as the platform's
+FUNCTION_INVOCATION_FAILED, with nothing in the response naming the cause.
 
 The same proxy handler runs in all three environments — Vite middleware in
 development, a Vercel function in production, and the Node server in the

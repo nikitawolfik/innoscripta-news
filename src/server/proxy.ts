@@ -1,6 +1,12 @@
-import { getServerEnv } from "~/server/env";
-import { isSourceId, UPSTREAMS } from "~/server/upstreams";
-import type { SourceId } from "~/types/source";
+// Relative, with explicit extensions, unlike the rest of src/. Vercel builds
+// this directory with its own compiler settings — nodenext resolution and no
+// knowledge of the `~/` mapping — so an aliased or extensionless import fails
+// to compile there and the function is silently never deployed. Resolving
+// without a path mapping is what keeps one proxy buildable by three
+// toolchains. See the import rules in CLAUDE.md.
+import { getServerEnv } from "./env.js";
+import { isSourceId, UPSTREAMS } from "./upstreams.js";
+import type { SourceId } from "../types/source.js";
 
 // Caching is delegated to the CDN in front of the deployment (and to TanStack
 // Query in the browser) rather than held in process. See the README: a shared
@@ -8,13 +14,19 @@ import type { SourceId } from "~/types/source";
 const SUCCESS_CACHE_CONTROL = "s-maxage=300, stale-while-revalidate=600";
 const RATE_LIMIT_CACHE_CONTROL = "no-store";
 
+/**
+ * Carries the caller's path when the platform cannot route on it directly.
+ * Stripped before anything is forwarded upstream.
+ */
+const INTERNAL_ROUTE_PARAM = "__route";
+
 export async function proxy(request: Request): Promise<Response> {
   if (request.method !== "GET") {
     return jsonResponse({ error: "method_not_allowed" }, 405);
   }
 
   const requestUrl = new URL(request.url);
-  const route = parseApiRoute(requestUrl.pathname);
+  const route = resolveApiRoute(requestUrl);
 
   if (!route || !isSourceId(route.source)) {
     return jsonResponse({ error: "unknown_source" }, 404);
@@ -78,6 +90,28 @@ export async function proxy(request: Request): Promise<Response> {
   });
 }
 
+/**
+ * Vercel sends every /api/* request to a single function, so the pathname the
+ * handler sees is that function's own rather than the caller's; the rewrite
+ * carries the real one in `__route`. Vite and the container invoke this on the
+ * actual request path, where the pathname is authoritative and the parameter
+ * is absent — so the pathname is tried first and the parameter is a fallback,
+ * never the other way round.
+ */
+function resolveApiRoute(
+  url: URL,
+): { source: string; upstreamPath: string } | null {
+  const fromPathname = parseApiRoute(url.pathname);
+
+  if (fromPathname && isSourceId(fromPathname.source)) {
+    return fromPathname;
+  }
+
+  const forwardedPath = url.searchParams.get(INTERNAL_ROUTE_PARAM);
+
+  return forwardedPath ? parseApiRoute(`/api/${forwardedPath}`) : fromPathname;
+}
+
 function parseApiRoute(
   pathname: string,
 ): { source: string; upstreamPath: string } | null {
@@ -98,6 +132,12 @@ function copySearchParams(
   destination: URLSearchParams,
 ): void {
   for (const [key, value] of source) {
+    // Ours, not the caller's — forwarding it would put an unknown parameter on
+    // every upstream request.
+    if (key === INTERNAL_ROUTE_PARAM) {
+      continue;
+    }
+
     destination.append(key, value);
   }
 }
@@ -129,7 +169,10 @@ function rateLimitResponse(
 function jsonResponse(
   body: object,
   status: number,
-  headers?: HeadersInit,
+  // The only caller passes a plain record, and naming that instead of
+  // HeadersInit keeps this compilable without the DOM lib — the function build
+  // has Node's fetch types but not that alias.
+  headers?: Record<string, string>,
 ): Response {
   const responseHeaders = new Headers(headers);
   responseHeaders.set("Content-Type", "application/json");
