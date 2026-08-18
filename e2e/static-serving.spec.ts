@@ -43,6 +43,28 @@ test.describe("production server", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("serves the icons and manifest as themselves", async ({ request }) => {
+    // Same failure mode as the assets above, one layer out: a type the server
+    // does not know falls back to octet-stream, and a path it cannot find
+    // falls through to the shell. Either way the browser silently drops the
+    // icon or refuses the manifest.
+    const expectedTypes: Record<string, string> = {
+      "/favicon.ico": "image/x-icon",
+      "/favicon-32x32.png": "image/png",
+      "/apple-touch-icon.png": "image/png",
+      "/site.webmanifest": "application/manifest+json",
+    };
+
+    for (const [assetPath, expectedType] of Object.entries(expectedTypes)) {
+      const response = await request.get(assetPath);
+
+      expect(response.status(), assetPath).toBe(200);
+      expect(response.headers()["content-type"], assetPath).toContain(
+        expectedType,
+      );
+    }
+  });
+
   test("falls back to the shell for a client-side route", async ({ page }) => {
     await page.goto("/feed");
 

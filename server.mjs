@@ -24,6 +24,7 @@ const CONTENT_TYPES = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  ".webmanifest": "application/manifest+json",
   ".webp": "image/webp",
   ".woff2": "font/woff2",
 };

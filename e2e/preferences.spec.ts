@@ -33,6 +33,36 @@ test.describe("personal feed", () => {
     ).toHaveCount(0);
   });
 
+  test("a drafted preference persists once applied", async ({
+    page,
+    viewport,
+  }) => {
+    test.skip((viewport?.width ?? 0) < 768, "desktop filter bar only");
+    await mockApi(page);
+    await page.goto("/feed");
+
+    await page.getByRole("button", { name: /^Sources/ }).click();
+    await page.getByRole("menuitemcheckbox", { name: "The Guardian" }).click();
+    await page.keyboard.press("Escape");
+
+    // The store is written on Apply, not on the toggle, so onboarding stands.
+    await expect(
+      page.getByRole("heading", { name: "Build your feed" }),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Build your feed" }),
+    ).toHaveCount(0);
+
+    await page.reload();
+
+    await expect(
+      page.getByRole("heading", { name: "Build your feed" }),
+    ).toHaveCount(0);
+    await expect(page).toHaveURL((url) => url.search === "");
+  });
+
   test("discover filters do not leak into the personal feed", async ({
     page,
   }) => {
