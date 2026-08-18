@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 
@@ -63,7 +63,11 @@ export function ArticleFeed({ filters, onResetFilters }: Props) {
     scrollMargin: listRef.current?.offsetTop ?? 0,
   });
 
-  useEffect(() => {
+  // Layout effect, not an effect: `scrollMargin` reads `listRef.current`, which
+  // is null on the first render, so the first pass positions rows as if the
+  // list started at the top of the document. Correcting after paint would show
+  // that pass; correcting before it does not.
+  useLayoutEffect(() => {
     virtualizer.measure();
   }, [virtualizer, rowHeight]);
 

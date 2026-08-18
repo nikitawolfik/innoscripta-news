@@ -9,7 +9,7 @@ interface Props {
 
 export function ArticleNotFound({ onRetry, message }: Props) {
   return (
-    <div className="mx-auto max-w-prose py-16 text-center">
+    <div className="mx-auto max-w-prose py-10 text-center">
       <h1 className="text-xl font-semibold">Article not found</h1>
       <p className="mt-3 text-sm text-muted-foreground">
         {message ??

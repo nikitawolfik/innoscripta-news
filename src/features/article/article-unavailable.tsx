@@ -17,7 +17,7 @@ interface Props {
  */
 export function ArticleUnavailable({ source, url }: Props) {
   return (
-    <div className="mx-auto max-w-prose py-16 text-center">
+    <div className="mx-auto max-w-prose py-10 text-center">
       <h1 className="text-xl font-semibold">
         This article can’t be opened here
       </h1>

@@ -1,6 +1,6 @@
 import type { SourceId } from "~/types/source";
 
-export class SourceError extends Error {
+class SourceError extends Error {
   readonly source: SourceId;
 
   constructor(source: SourceId, message: string) {
