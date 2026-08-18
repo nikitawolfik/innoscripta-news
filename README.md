@@ -5,6 +5,8 @@ Times** into one normalized, filterable, virtualized feed.
 
 React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query · Playwright
 
+**Live preview:** https://innoscripta-news-rose.vercel.app/
+
 ---
 
 ## Run it
@@ -563,6 +565,8 @@ PORT=3000 docker compose up --build
 ---
 
 ## Deploying to Vercel
+
+The deployed preview lives at https://innoscripta-news-rose.vercel.app/.
 
 Import the repository, then set `NEWSAPI_KEY`, `GUARDIAN_KEY` and `NYT_KEY` as
 project environment variables. No build configuration is needed:
