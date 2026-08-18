@@ -8,6 +8,8 @@ export function DiscoverRoute() {
 
   return (
     <section>
+      {/* React 19 hoists this into <head>. */}
+      <title>Discover</title>
       <h1 className="sr-only">Discover</h1>
       <FilterBar filters={filters} setFilters={setFilters} />
       <ArticleFeed

@@ -30,6 +30,7 @@ describe("ArticleRoute", () => {
         name: /can’t be opened here/,
       }),
     ).toBeInTheDocument();
+    expect(document.title).toBe("NewsAPI Article");
   });
 
   it("treats an undecodable id as a bad link, not an error", async () => {
@@ -65,5 +66,8 @@ describe("ArticleRoute", () => {
     expect(
       await screen.findByRole("heading", { name: "Resolved from a cold link" }),
     ).toBeInTheDocument();
+    expect(document.title).toBe(
+      "The Guardian Article | Resolved from a cold link",
+    );
   });
 });

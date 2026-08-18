@@ -16,6 +16,7 @@ export function FeedRoute() {
 
   return (
     <section>
+      <title>My feed</title>
       <h1 className="sr-only">My feed</h1>
       <FilterBar filters={filters} setFilters={setFilters} />
       {hasPreferences ? (
