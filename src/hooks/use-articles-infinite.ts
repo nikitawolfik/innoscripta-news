@@ -1,4 +1,5 @@
 import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
+import { parseISO } from "date-fns";
 
 import { RateLimitError } from "~/api/errors";
 import { partitionSources } from "~/api/sources/registry";
@@ -12,6 +13,13 @@ const STALE_TIME_MS = 5 * 60 * 1000;
 const MAX_TRANSIENT_RETRIES = 2;
 const TRANSIENT_RETRY_BASE_MS = 1_000;
 const TRANSIENT_RETRY_CAP_MS = 30_000;
+
+/**
+ * Sorts an article whose timestamp will not parse to the end of the batch.
+ * A `NaN` comparator would instead leave the whole batch in engine-defined
+ * order, and the virtualizer needs a deterministic one.
+ */
+const UNPARSEABLE_PUBLISHED_AT_MS = Number.MIN_SAFE_INTEGER;
 
 export type SourceCursor = Partial<Record<SourceId, number>>;
 
@@ -133,15 +141,28 @@ export async function fetchArticlesBatch(
     throw pickBatchError(errors);
   }
 
-  articles.sort((first, second) =>
-    second.publishedAt.localeCompare(first.publishedAt),
-  );
+  articles.sort(byPublishedAtDescending);
 
   return {
     articles,
     nextCursor: Object.keys(nextCursor).length > 0 ? nextCursor : undefined,
     degraded,
   };
+}
+
+/**
+ * Sources emit different ISO offset forms — Guardian and NewsAPI use `Z`, NYT
+ * uses `+0000` — so comparing the raw strings only orders correctly by accident
+ * of both spellings meaning UTC. Compare the instants they denote instead.
+ */
+function byPublishedAtDescending(first: Article, second: Article): number {
+  return publishedAtMillis(second) - publishedAtMillis(first);
+}
+
+function publishedAtMillis(article: Article): number {
+  const millis = parseISO(article.publishedAt).getTime();
+
+  return Number.isNaN(millis) ? UNPARSEABLE_PUBLISHED_AT_MS : millis;
 }
 
 function toSourceFailure(

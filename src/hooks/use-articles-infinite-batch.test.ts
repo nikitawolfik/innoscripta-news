@@ -9,6 +9,12 @@ import { DEFAULT_FILTERS } from "~/types/filters";
 const ALL_SOURCE_FILTERS = { ...DEFAULT_FILTERS, q: "climate" };
 import { mswServer } from "../../tests/msw/server";
 
+const NEWSAPI_PUBLISHED_AT = "2026-08-17T13:00:00Z";
+const GUARDIAN_PUBLISHED_AT = "2026-08-17T12:00:00Z";
+// NYT spells UTC as `+0000` where the other two use `Z`, so the defaults keep
+// every batch test running against genuinely mixed ISO forms.
+const NYT_PUBLISHED_AT = "2026-08-17T11:00:00+0000";
+
 const ALL_SOURCE_CURSOR = {
   newsapi: 1,
   guardian: 1,
@@ -107,29 +113,78 @@ describe("multi-source article batches", () => {
     ]);
     expect(recoveredBatch.degraded).toEqual([]);
   });
+
+  it("orders a batch by instant, not by timestamp spelling", async () => {
+    // Offsets that disagree with wall-clock order: comparing these strings
+    // lexicographically puts Guardian first, but it is the oldest of the three.
+    useSuccessfulSourceHandlers({
+      publishedAt: {
+        newsapi: "2026-08-17T13:00:00Z",
+        guardian: "2026-08-17T14:30:00+02:00",
+        nyt: "2026-08-17T13:45:00+0000",
+      },
+    });
+
+    const batch = await fetchArticlesBatch(
+      ALL_SOURCE_FILTERS,
+      ALL_SOURCE_CURSOR,
+    );
+
+    expect(batch.articles.map((article) => article.source)).toEqual([
+      "nyt",
+      "newsapi",
+      "guardian",
+    ]);
+  });
+
+  it("sorts an unparseable timestamp last instead of scrambling the batch", async () => {
+    useSuccessfulSourceHandlers({
+      publishedAt: { newsapi: "yesterday, probably" },
+    });
+
+    const batch = await fetchArticlesBatch(
+      ALL_SOURCE_FILTERS,
+      ALL_SOURCE_CURSOR,
+    );
+
+    expect(batch.articles.map((article) => article.source)).toEqual([
+      "guardian",
+      "nyt",
+      "newsapi",
+    ]);
+  });
 });
+
+type PublishedDates = Partial<Record<"newsapi" | "guardian" | "nyt", string>>;
 
 type HandlerOptions = {
   newsApiResponse?: Response;
   nytHandler?: Parameters<typeof http.get>[1];
+  publishedAt?: PublishedDates;
 };
 
 function useSuccessfulSourceHandlers(options: HandlerOptions = {}): void {
+  const publishedAt = options.publishedAt ?? {};
+
   mswServer.use(
     http.get("*/api/newsapi/everything", () => {
-      return options.newsApiResponse ?? HttpResponse.json(newsApiPayload());
+      return (
+        options.newsApiResponse ??
+        HttpResponse.json(newsApiPayload(publishedAt.newsapi))
+      );
     }),
     http.get("*/api/guardian/search", () =>
-      HttpResponse.json(guardianPayload()),
+      HttpResponse.json(guardianPayload(publishedAt.guardian)),
     ),
     http.get(
       "*/api/nyt/articlesearch.json",
-      options.nytHandler ?? (() => HttpResponse.json(nytPayload())),
+      options.nytHandler ??
+        (() => HttpResponse.json(nytPayload(publishedAt.nyt))),
     ),
   );
 }
 
-function newsApiPayload() {
+function newsApiPayload(publishedAt = NEWSAPI_PUBLISHED_AT) {
   return {
     status: "ok",
     totalResults: 1,
@@ -141,13 +196,13 @@ function newsApiPayload() {
         description: "News description",
         url: "https://example.com/newsapi",
         urlToImage: null,
-        publishedAt: "2026-08-17T13:00:00Z",
+        publishedAt,
       },
     ],
   };
 }
 
-function guardianPayload() {
+function guardianPayload(webPublicationDate = GUARDIAN_PUBLISHED_AT) {
   return {
     response: {
       status: "ok",
@@ -158,7 +213,7 @@ function guardianPayload() {
           id: "world/guardian-example",
           webTitle: "Guardian article",
           webUrl: "https://www.theguardian.com/world/guardian-example",
-          webPublicationDate: "2026-08-17T12:00:00Z",
+          webPublicationDate,
           sectionName: "World news",
         },
       ],
@@ -166,7 +221,7 @@ function guardianPayload() {
   };
 }
 
-function nytPayload() {
+function nytPayload(pubDate = NYT_PUBLISHED_AT) {
   return {
     response: {
       docs: [
@@ -175,7 +230,7 @@ function nytPayload() {
           web_url: "https://www.nytimes.com/2026/08/17/example.html",
           abstract: "NYT abstract",
           headline: { main: "NYT article" },
-          pub_date: "2026-08-17T11:00:00Z",
+          pub_date: pubDate,
           section_name: "World",
           byline: { original: "By NYT Author" },
           multimedia: { default: { url: "https://static01.nyt.com/a.jpg" } },
