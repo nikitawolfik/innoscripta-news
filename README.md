@@ -323,6 +323,32 @@ reported `totalResults` (which happily claims 21,000 hits), and NewsAPI opts out
 more than one category, a category combined with a date range, or a range older
 than the plan window.
 
+#### Considered: top stories for the unfiltered feed
+
+Because neither NewsAPI endpoint accepts a request with no parameters at all,
+the default feed — before the reader has typed or picked anything — comes from
+Guardian and NYT only. The obvious repair is to give every source a second
+endpoint for that case: NewsAPI's `/top-headlines`, Guardian's editor-picked
+front sections, NYT's Top Stories. All three sources would then appear on first
+load.
+
+It was rejected because of what happens on the next interaction. Those
+endpoints serve a curated front page, not a slice of a search index, so the
+first keyword or filter would not narrow the feed — it would swap the corpus
+underneath the reader. Adding "technology" to a list of top stories should
+leave the technology ones and drop the rest; instead every article on screen
+would be replaced by results from a different endpoint with different ranking
+and a different time window. A filter that replaces rather than narrows is a
+worse lie than an absent source, and it would have to be explained in the UI
+every time.
+
+It would also cost the property that makes the capability matrix readable: one
+endpoint choice per source, decided by the filter shape and declared up front.
+NewsAPI already switches endpoints on exactly that basis, and adding a third
+mode keyed on "no filters at all" puts a special case in every client for the
+one screen where the honest answer — this source has nothing to answer with
+yet — is cheap to state.
+
 ### NYT's Article Search: no `fq`, and intermittently empty
 
 Two separate problems, both verified against the live API.
