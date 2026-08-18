@@ -14,9 +14,11 @@ export function useUrlFilters(): [Filters, SetFilters] {
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
 
   const setFilters = useCallback<SetFilters>(
-    (patch) => {
-      setSearchParams((currentParams) =>
-        serializeFilters({ ...parseFilters(currentParams), ...patch }),
+    (patch, options) => {
+      setSearchParams(
+        (currentParams) =>
+          serializeFilters({ ...parseFilters(currentParams), ...patch }),
+        { replace: options?.replace ?? false },
       );
     },
     [setSearchParams],

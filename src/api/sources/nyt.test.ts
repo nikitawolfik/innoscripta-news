@@ -69,20 +69,45 @@ describe("normalizeNytArticle", () => {
 });
 
 describe("nytClient", () => {
-  it("supports every filter in the shared contract", () => {
+  it("serves keyword and date filters", () => {
     expect(
       nytClient.unsupportedReason({
         ...DEFAULT_FILTERS,
         q: "climate",
         from: "2026-01-01",
         to: "2026-01-31",
-        categories: ["technology", "science"],
-        authors: ["Jane Doe", "John Doe"],
       }),
     ).toBeNull();
   });
 
-  it("serializes its zero-based page, dates and filter query", async () => {
+  /**
+   * Article Search returns zero results for any request carrying `fq` on this
+   * tier, and category, author and by-id lookup are all expressed through it.
+   * Declining is the honest answer; issuing the query would contribute no
+   * articles while claiming to have filtered.
+   */
+  it("declines the filters that would need fq", () => {
+    expect(
+      nytClient.unsupportedReason({
+        ...DEFAULT_FILTERS,
+        categories: ["technology"],
+      }),
+    ).toBe("The New York Times cannot filter by category on this API tier");
+
+    expect(
+      nytClient.unsupportedReason({
+        ...DEFAULT_FILTERS,
+        authors: ["Jane Doe"],
+      }),
+    ).toBe("The New York Times cannot filter by author on this API tier");
+  });
+
+  it("offers no by-id lookup", () => {
+    expect(nytClient.fetchById).toBeNull();
+    expect(nytClient.capabilities.fetchById).toBe(false);
+  });
+
+  it("serializes its zero-based page and dates, and never sends fq", async () => {
     let requestedUrl = "";
 
     mswServer.use(
@@ -99,8 +124,6 @@ describe("nytClient", () => {
         q: "artificial intelligence",
         from: "2026-01-02T12:00:00Z",
         to: "2026-02-03T12:00:00Z",
-        categories: ["technology", "science"],
-        authors: ["Jane Doe", "John Doe"],
       },
       2,
     );
@@ -109,9 +132,7 @@ describe("nytClient", () => {
     expect(searchParams.get("page")).toBe("1");
     expect(searchParams.get("begin_date")).toBe("20260102");
     expect(searchParams.get("end_date")).toBe("20260203");
-    expect(searchParams.get("fq")).toBe(
-      'section_name:("Technology" OR "Science") AND byline:("Jane Doe" OR "John Doe")',
-    );
+    expect(searchParams.get("fq")).toBeNull();
     expect(result.articles).toHaveLength(2);
     expect(result.hasMore).toBe(true);
   });
@@ -129,24 +150,5 @@ describe("nytClient", () => {
 
     expect(result.articles).toEqual([]);
     expect(result.hasMore).toBe(false);
-  });
-
-  it("fetches a single article through an _id filter", async () => {
-    let filterQuery = "";
-
-    mswServer.use(
-      http.get("*/api/nyt/articlesearch.json", ({ request }) => {
-        filterQuery = new URL(request.url).searchParams.get("fq") ?? "";
-
-        return HttpResponse.json({
-          response: { docs: [], metadata: { hits: 0, offset: 0 } },
-        });
-      }),
-    );
-
-    const article = await nytClient.fetchById?.("nyt://article/example");
-
-    expect(filterQuery).toBe('_id:"nyt://article/example"');
-    expect(article).toBeNull();
   });
 });

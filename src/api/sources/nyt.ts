@@ -12,7 +12,6 @@ import type {
   SourceCapabilities,
   SourceClient,
 } from "~/api/types";
-import { mapCategoriesForSource } from "~/lib/categories";
 import type { Article } from "~/types/article";
 import type { Filters } from "~/types/filters";
 
@@ -21,23 +20,47 @@ const SOURCE_LABEL = "The New York Times";
 const PAGE_SIZE = 10;
 const NYT_IMAGE_BASE_URL = "https://www.nytimes.com/";
 
+/**
+ * Article Search returns **zero results for any request carrying `fq`** on the
+ * free tier — verified against the live API with a healthy baseline in the same
+ * run: `q=climate&sort=newest` gave 10,000 hits while
+ * `fq=section_name:("Technology")` gave `docs: null`, as did NYT's own
+ * documented `fq` example.
+ *
+ * Category filtering, author filtering and by-id lookup are all expressed
+ * through `fq`, so all three are declared unsupported rather than issued as
+ * queries that return nothing. Claiming support and quietly contributing no
+ * articles is the failure this project avoids everywhere else.
+ */
 const CAPABILITIES: SourceCapabilities = {
   keyword: true,
   dateRange: true,
-  category: true,
-  author: true,
+  category: false,
+  author: false,
   body: false,
-  fetchById: true,
+  fetchById: false,
 };
 
 export const nytClient: SourceClient = {
   id: SOURCE_ID,
   label: SOURCE_LABEL,
   capabilities: CAPABILITIES,
-  unsupportedReason: () => null,
+  unsupportedReason: nytUnsupportedReason,
   search: searchNyt,
-  fetchById: fetchNytById,
+  fetchById: null,
 };
+
+export function nytUnsupportedReason(filters: Filters): string | null {
+  if (filters.categories.length > 0) {
+    return "The New York Times cannot filter by category on this API tier";
+  }
+
+  if (filters.authors.length > 0) {
+    return "The New York Times cannot filter by author on this API tier";
+  }
+
+  return null;
+}
 
 async function searchNyt(
   filters: Filters,
@@ -56,16 +79,6 @@ async function searchNyt(
     hasMore: (upstreamPage + 1) * PAGE_SIZE < payload.response.metadata.hits,
     droppedInvalidCount,
   };
-}
-
-async function fetchNytById(id: string): Promise<Article | null> {
-  const searchParams = new URLSearchParams({
-    fq: `_id:"${escapeFilterValue(id)}"`,
-  });
-  const payload = await fetchNytPayload(searchParams);
-  const firstDocument = payload.response.docs[0];
-
-  return firstDocument ? normalizeNytArticle(firstDocument) : null;
 }
 
 export function buildNytSearchParams(
@@ -89,12 +102,7 @@ export function buildNytSearchParams(
     searchParams.set("end_date", toNytDate(filters.to));
   }
 
-  const filterQuery = buildNytFilterQuery(filters);
-
-  if (filterQuery) {
-    searchParams.set("fq", filterQuery);
-  }
-
+  // No `fq` is ever sent: see CAPABILITIES above.
   return searchParams;
 }
 
@@ -110,33 +118,6 @@ export function normalizeNytArticle(value: unknown): Article | null {
   }
 
   return mapNytArticle(parsed.data);
-}
-
-function buildNytFilterQuery(filters: Filters): string {
-  const expressions: string[] = [];
-  const sections = mapCategoriesForSource(filters.categories, SOURCE_ID);
-
-  if (sections.length > 0) {
-    expressions.push(buildFilterExpression("section_name", sections));
-  }
-
-  if (filters.authors.length > 0) {
-    expressions.push(buildFilterExpression("byline", filters.authors));
-  }
-
-  return expressions.join(" AND ");
-}
-
-function buildFilterExpression(field: string, values: string[]): string {
-  const alternatives = values
-    .map((value) => `"${escapeFilterValue(value)}"`)
-    .join(" OR ");
-
-  return `${field}:(${alternatives})`;
-}
-
-function escapeFilterValue(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 async function fetchNytPayload(searchParams: URLSearchParams): Promise<{

@@ -26,21 +26,29 @@ describe("source registry", () => {
     ).toBeNull();
   });
 
-  it("excludes NewsAPI from author searches with an actionable detail", () => {
+  it("leaves only Guardian on an author search, each exclusion explained", () => {
     const partition = partitionSources({
       ...DEFAULT_FILTERS,
       authors: ["Jane Doe"],
     });
 
+    // Guardian resolves a display name to a contributor tag. NewsAPI has no
+    // author parameter, and NYT's author filter needs `fq`, which returns
+    // nothing on the free tier — so both decline rather than contribute an
+    // empty result while appearing to have filtered.
     expect(partition.eligible.map((sourceClient) => sourceClient.id)).toEqual([
       "guardian",
-      "nyt",
     ]);
     expect(partition.excluded).toEqual([
       {
         source: "newsapi",
         reason: "excluded",
         detail: "NewsAPI cannot filter by author",
+      },
+      {
+        source: "nyt",
+        reason: "excluded",
+        detail: "The New York Times cannot filter by author on this API tier",
       },
     ]);
   });

@@ -21,7 +21,9 @@ interface Props {
 
 /** Mobile: the filter controls collapse into a sheet behind one trigger. */
 export function FilterSheet({ filters, setFilters }: Props) {
-  const activeCount = countActiveFilterGroups(filters);
+  const activeCount = countActiveFilterGroups(filters, {
+    includeQuery: false,
+  });
 
   return (
     <Sheet>

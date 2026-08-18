@@ -34,7 +34,11 @@ describe("FilterBar", () => {
 
     vi.advanceTimersByTime(1);
     expect(setFilters).toHaveBeenCalledTimes(1);
-    expect(setFilters).toHaveBeenCalledWith({ q: "climate" });
+    expect(setFilters).toHaveBeenCalledWith(
+      { q: "climate" },
+      // Replaces so Back does not walk the query one typing pause at a time.
+      { replace: true },
+    );
   });
 
   it("adds an author on Enter", () => {

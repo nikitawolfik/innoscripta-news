@@ -21,12 +21,23 @@ test.describe("mobile filters", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
-  test("the sheet trigger carries an active-filter count", async ({ page }) => {
+  test("the trigger counts only what the sheet contains", async ({ page }) => {
     await mockApi(page);
+    // A query and a source are both active, but the search box sits outside
+    // the sheet — badging it would point at something the sheet cannot clear.
     await page.goto("/?q=climate&sources=guardian");
 
     await expect(
       page.getByRole("button", { name: "Open filters" }),
-    ).toContainText("2");
+    ).toContainText("1");
+  });
+
+  test("the trigger shows no count for a search alone", async ({ page }) => {
+    await mockApi(page);
+    await page.goto("/?q=climate");
+
+    await expect(page.getByRole("button", { name: "Open filters" })).toHaveText(
+      "Filters",
+    );
   });
 });

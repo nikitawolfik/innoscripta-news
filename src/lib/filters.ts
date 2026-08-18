@@ -61,10 +61,22 @@ export function serializeFilters(filters: Filters): URLSearchParams {
   return searchParams;
 }
 
-/** How many filter groups are active — shown on the mobile sheet trigger. */
-export function countActiveFilterGroups(filters: Filters): number {
+type CountOptions = {
+  /**
+   * Count the search query as a group. The mobile sheet passes `false`: the
+   * search box sits outside it, so counting the query would badge the Filters
+   * button for something the sheet does not contain and cannot clear.
+   */
+  includeQuery?: boolean;
+};
+
+/** How many filter groups are active. */
+export function countActiveFilterGroups(
+  filters: Filters,
+  { includeQuery = true }: CountOptions = {},
+): number {
   const groups = [
-    Boolean(filters.q.trim()),
+    includeQuery && Boolean(filters.q.trim()),
     Boolean(filters.from ?? filters.to),
     filters.sources.length > 0,
     filters.categories.length > 0,

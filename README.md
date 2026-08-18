@@ -229,10 +229,10 @@ The three sources do not support the same filters, and one contradicts itself:
 | ----------- | ---------------------------------------------- | --------------------- | ---------------------------- |
 | keyword     | ✅ `/everything?q=`                            | ✅ `q=`               | ✅ `q=`                      |
 | date range  | ✅ ISO `from`/`to`                             | ✅ `from-date`        | ✅ `begin_date` (`yyyyMMdd`) |
-| category    | ⚠️ only on `/top-headlines`, not `/everything` | ✅ `section=`         | ✅ `fq=section_name:`        |
-| author      | ❌ unsupported                                 | ✅ `tag=profile/`     | ✅ `fq=byline:`              |
+| category    | ⚠️ only on `/top-headlines`, not `/everything` | ✅ `section=`         | ❌ needs `fq` (see below)    |
+| author      | ❌ unsupported                                 | ✅ `tag=profile/`     | ❌ needs `fq` (see below)    |
 | full text   | ❌ truncated to ~200 chars                     | ✅ `show-fields=body` | ❌ abstract only             |
-| fetch by id | ❌ no endpoint exists                          | ✅ `GET /{id}`        | ⚠️ via `fq=_id:"…"`          |
+| fetch by id | ❌ no endpoint exists                          | ✅ `GET /{id}`        | ❌ needs `fq` (see below)    |
 
 Each source declares a **capability descriptor**. When a filter is active that a
 source can't honor natively, that source is excluded from the batch and the UI
@@ -269,31 +269,38 @@ reported `totalResults` (which happily claims 21,000 hits), and NewsAPI opts out
 more than one category, a category combined with a date range, or a range older
 than the plan window.
 
-### NYT's Article Search is intermittently empty
+### NYT's Article Search: no `fq`, and intermittently empty
 
-Article Search returns **HTTP 200 with `hits: 0` and `docs: null`** for requests
-that succeed moments earlier or later. The same query — a bare `sort=newest`, a
-plain `q=technology` — alternates between ~10,000 hits and nothing, with no
-error, no `429`, and no `Retry-After` to act on.
+Two separate problems, both verified against the live API.
 
-It is not quota exhaustion: in a single run, NYT's Most Popular endpoint
-returned 20 articles while Article Search returned zero on the same key. Nor is
-it query syntax: NYT's own documented `fq` example behaves the same way, and the
-flakiness extends beyond search — a Top Stories section returned "Section not
-found" in one request and 29 articles in the next.
+**Every request carrying `fq` returns zero results** on the free tier — checked
+with a healthy baseline in the same run:
 
-Two consequences shape the code:
+```
+q=climate&sort=newest                       hits=10000  docs=10
+sort=newest&fq=section_name:("Technology")  hits=0      docs=null
+sort=newest&fq=news_desk:("Business")       hits=0      docs=null
+```
 
-- **`docs: null` is parsed as an empty page, not a failure.** Rejecting it would
-  turn a routine empty response into "NYT is unavailable" for the reader.
-- **The feed degrades per source rather than failing.** An empty or failing NYT
-  leaves Guardian and NewsAPI rendering, with the notice naming what dropped out.
+NYT's own documented `fq` example behaves the same way. Category filtering,
+author filtering and by-id lookup are all expressed through `fq`, so all three
+are **declared unsupported** rather than issued as queries that quietly return
+nothing. NYT opts out with a named reason, exactly as NewsAPI does, and its
+`fetchById` is `null` so a deep-linked article says so instead of spinning.
+Keyword and date filtering are unaffected.
 
-Top Stories and Most Popular are more reliable, but they accept no query
-parameters at all — no keyword, no date range, no author, no pagination — so
-they cannot serve the filtering the brief asks for. Substituting them would
-trade a source that occasionally returns nothing for one that can never honour a
-filter.
+**Separately, the same request alternates between ~10,000 hits and `docs:
+null`**, with no error and no `429`. It is not quota: Most Popular returned 20
+articles while Article Search returned zero on the same key in the same run, and
+a Top Stories section returned "Section not found" in one request and 29
+articles in the next. Handled rather than fixed — `docs: null` parses as an
+empty page, and the feed degrades per source with the notice naming what
+dropped out.
+
+Top Stories and Most Popular are more reliable but accept no query parameters at
+all — no keyword, no date range, no author, no pagination — so they cannot serve
+the filtering the brief asks for. Substituting them would trade a source that
+sometimes returns nothing for one that can never honour a filter.
 
 **Why NewsAPI sits out the unfiltered feed.** With no keyword and no category
 there is no query NewsAPI will accept, so it is excluded from the default feed

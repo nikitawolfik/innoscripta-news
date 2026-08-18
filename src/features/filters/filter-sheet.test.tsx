@@ -13,12 +13,28 @@ const ACTIVE_FILTERS: Filters = {
 };
 
 describe("FilterSheet", () => {
-  it("shows the active filter group count on the trigger", () => {
+  it("counts only the filters the sheet actually contains", () => {
+    // ACTIVE_FILTERS sets a query plus a source and a category. The search box
+    // lives outside the sheet, so badging it would point at something the
+    // sheet neither shows nor can clear.
     render(<FilterSheet filters={ACTIVE_FILTERS} setFilters={vi.fn()} />);
 
     expect(
       screen.getByRole("button", { name: /open filters/i }),
-    ).toHaveTextContent("3");
+    ).toHaveTextContent("2");
+  });
+
+  it("shows no badge when only the search box is in use", () => {
+    render(
+      <FilterSheet
+        filters={{ ...DEFAULT_FILTERS, q: "climate" }}
+        setFilters={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /open filters/i }),
+    ).toHaveTextContent(/^Filters$/);
   });
 
   it("hides the badge when nothing is filtered", () => {

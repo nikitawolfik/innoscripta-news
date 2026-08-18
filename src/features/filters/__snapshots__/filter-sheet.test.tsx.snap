@@ -60,7 +60,7 @@ exports[`FilterSheet > matches the snapshot 1`] = `
       data-slot="badge"
       data-variant="secondary"
     >
-      3
+      2
     </span>
   </button>
 </div>

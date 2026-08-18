@@ -35,7 +35,12 @@ export function FilterBar({ filters, setFilters }: Props) {
       <div className="flex items-center gap-2">
         <SearchInput
           value={filters.q}
-          onChange={(nextQuery) => setFilters({ q: nextQuery })}
+          // Replaces rather than pushes: a debounced search would otherwise
+          // leave one history entry per typing pause, so Back would walk the
+          // query letter by letter instead of leaving the page.
+          onChange={(nextQuery) =>
+            setFilters({ q: nextQuery }, { replace: true })
+          }
         />
         {isDesktop ? null : (
           <FilterSheet filters={filters} setFilters={setFilters} />
