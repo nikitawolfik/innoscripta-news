@@ -18,9 +18,16 @@ interface Props {
   options: MultiSelectOption[];
   values: string[];
   onChange: (values: string[]) => void;
+  triggerClassName?: string;
 }
 
-export function MultiSelect({ label, options, values, onChange }: Props) {
+export function MultiSelect({
+  label,
+  options,
+  values,
+  onChange,
+  triggerClassName,
+}: Props) {
   const triggerLabel =
     values.length > 0 ? `${label} (${values.length})` : label;
 
@@ -35,7 +42,7 @@ export function MultiSelect({ label, options, values, onChange }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className={triggerClassName}>
           {triggerLabel}
           <ChevronDown aria-hidden="true" />
         </Button>

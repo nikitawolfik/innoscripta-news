@@ -44,6 +44,7 @@ export function FilterSheet({ filters, setFilters }: Props) {
         <FilterControls
           filters={filters}
           setFilters={setFilters}
+          orientation="column"
           className="flex-col px-4"
         />
       </SheetContent>

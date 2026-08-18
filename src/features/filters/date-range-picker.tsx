@@ -1,5 +1,5 @@
 import { format, parseISO, subDays } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronDown } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 
 import { Button } from "~/components/ui/button";
@@ -30,9 +30,15 @@ interface Props {
   from: string | null;
   to: string | null;
   onChange: (range: { from: string | null; to: string | null }) => void;
+  triggerClassName?: string;
 }
 
-export function DateRangePicker({ from, to, onChange }: Props) {
+export function DateRangePicker({
+  from,
+  to,
+  onChange,
+  triggerClassName,
+}: Props) {
   const selectedRange: DateRange | undefined = from
     ? { from: parseISO(from), to: to ? parseISO(to) : undefined }
     : undefined;
@@ -61,9 +67,14 @@ export function DateRangePicker({ from, to, onChange }: Props) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline">
-          <CalendarIcon aria-hidden="true" />
-          {formatTriggerLabel(from, to)}
+        <Button variant="outline" className={triggerClassName}>
+          {/* Grouped so `justify-between` splits label from chevron rather than
+              stranding the calendar icon on its own. */}
+          <span className="flex items-center gap-2">
+            <CalendarIcon aria-hidden="true" />
+            {formatTriggerLabel(from, to)}
+          </span>
+          <ChevronDown aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto flex-row gap-3">

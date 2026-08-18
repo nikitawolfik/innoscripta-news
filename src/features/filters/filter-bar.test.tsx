@@ -37,18 +37,78 @@ describe("FilterBar", () => {
     expect(setFilters).toHaveBeenCalledWith({ q: "climate" });
   });
 
-  it("patches authors on Enter", () => {
+  it("adds an author on Enter", () => {
     const setFilters = renderBar();
     const authorInput = screen.getByLabelText("Filter by authors");
 
-    fireEvent.change(authorInput, {
-      target: { value: "Jane Smith, John Doe" },
-    });
+    fireEvent.change(authorInput, { target: { value: "Jane Smith" } });
     fireEvent.keyDown(authorInput, { key: "Enter" });
+
+    expect(setFilters).toHaveBeenCalledWith({ authors: ["Jane Smith"] });
+  });
+
+  it("adds an author with the Add button", () => {
+    const setFilters = renderBar();
+
+    fireEvent.change(screen.getByLabelText("Filter by authors"), {
+      target: { value: "Marina Hyde" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(setFilters).toHaveBeenCalledWith({ authors: ["Marina Hyde"] });
+  });
+
+  it("keeps a comma inside a name rather than splitting on it", () => {
+    const setFilters = renderBar();
+    const authorInput = screen.getByLabelText("Filter by authors");
+
+    // Display names contain commas, which is why the URL uses one repeated
+    // `author` param per name instead of a joined list.
+    fireEvent.change(authorInput, { target: { value: "Smith, Jr." } });
+    fireEvent.keyDown(authorInput, { key: "Enter" });
+
+    expect(setFilters).toHaveBeenCalledWith({ authors: ["Smith, Jr."] });
+  });
+
+  it("appends to the authors already chosen", () => {
+    const setFilters = renderBar({
+      ...DEFAULT_FILTERS,
+      authors: ["Jane Smith"],
+    });
+
+    fireEvent.change(screen.getByLabelText("Filter by authors"), {
+      target: { value: "John Doe" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     expect(setFilters).toHaveBeenCalledWith({
       authors: ["Jane Smith", "John Doe"],
     });
+  });
+
+  it("removes an author from its chip", () => {
+    const setFilters = renderBar({
+      ...DEFAULT_FILTERS,
+      authors: ["Jane Smith", "John Doe"],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Jane Smith" }));
+
+    expect(setFilters).toHaveBeenCalledWith({ authors: ["John Doe"] });
+  });
+
+  it("ignores an empty or duplicate name", () => {
+    const setFilters = renderBar({
+      ...DEFAULT_FILTERS,
+      authors: ["Jane Smith"],
+    });
+    const authorInput = screen.getByLabelText("Filter by authors");
+
+    fireEvent.keyDown(authorInput, { key: "Enter" });
+    fireEvent.change(authorInput, { target: { value: "  Jane Smith  " } });
+    fireEvent.keyDown(authorInput, { key: "Enter" });
+
+    expect(setFilters).not.toHaveBeenCalled();
   });
 
   it("resets to the defaults when filters are active", () => {

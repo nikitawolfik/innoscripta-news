@@ -11,10 +11,10 @@ import { FeedError } from "~/features/feed/feed-error";
 import { FeedPausedFooter } from "~/features/feed/feed-paused-footer";
 import { FeedSkeleton, FeedSkeletonRow } from "~/features/feed/feed-skeleton";
 import {
-  DESKTOP_MEDIA_QUERY,
   ROW_HEIGHT_DESKTOP,
   ROW_HEIGHT_MOBILE,
 } from "~/features/feed/row-height";
+import { DESKTOP_MEDIA_QUERY } from "~/lib/breakpoints";
 import { useArticlesInfinite } from "~/hooks/use-articles-infinite";
 import { useMediaQuery } from "~/hooks/use-media-query";
 import { useRetryCountdown } from "~/hooks/use-retry-countdown";
