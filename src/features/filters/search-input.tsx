@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Search } from "lucide-react";
 
 import { Input } from "~/components/ui/input";
+import { useDebouncedCallback } from "~/hooks/use-debounced-callback";
 
 export const SEARCH_DEBOUNCE_MS = 400;
 
@@ -15,32 +16,19 @@ interface Props {
 // a round of metered upstream requests, not just a re-render.
 export function SearchInput({ value, onChange }: Props) {
   const [draft, setDraft] = useState(value);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitQuery = useDebouncedCallback(onChange, SEARCH_DEBOUNCE_MS);
 
-  // Sync external changes (reset, Back/Forward) into the draft.
+  // Sync external changes (reset, Back/Forward) into the draft. Only a
+  // keystroke schedules a commit, so this never echoes back out as a change.
   useEffect(() => {
     setDraft(value);
   }, [value]);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     const nextDraft = event.target.value;
+
     setDraft(nextDraft);
-
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-    }
-
-    timerRef.current = setTimeout(() => {
-      onChange(nextDraft);
-    }, SEARCH_DEBOUNCE_MS);
+    commitQuery(nextDraft);
   }
 
   return (
