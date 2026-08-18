@@ -463,8 +463,12 @@ clone the repo and run the whole suite before signing up for anything.
 
 Unit and component tests use Vitest with Testing Library, with MSW intercepting
 `fetch` so the real client → validate → normalize chain is exercised rather than
-a stubbed module. End-to-end tests use Playwright against the production build,
-with every proxied call intercepted in the browser.
+a stubbed module. End-to-end tests use Playwright against **the same Node server the container
+runs** — not `vite preview` — with every proxied call intercepted in the
+browser. That distinction earned itself: a slip in the container's static file
+handling served every asset as `text/html`, so the browser refused to execute
+them and the page rendered blank while every route still answered 200. A
+preview-server suite could not have seen it.
 
 Both layers read the **same captured fixtures** in `tests/fixtures/`, so they
 cannot disagree about what an API returns. Those fixtures are parsed by the real

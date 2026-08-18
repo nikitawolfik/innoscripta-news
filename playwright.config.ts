@@ -19,23 +19,28 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
   /**
-   * Runs against the production build. Every upstream call is intercepted in
-   * the browser, so no API keys are needed — the dev server would demand them
-   * at startup and the suite would stop being runnable by anyone who clones
-   * the repo.
+   * Runs against **the same Node server the container runs**, not `vite
+   * preview`. That distinction matters: a bug in the container's static file
+   * handling served every asset as HTML and rendered a blank page, and a
+   * preview-server suite could never have seen it.
    *
-   * The host is pinned to IPv4. `vite preview` otherwise binds whatever
-   * `localhost` resolves to, which on a CI runner is often `::1`, while the
-   * URL below is polled over IPv4 — the server starts, nothing ever answers,
-   * and the wait times out with no error to point at.
+   * The keys are placeholders. Every `/api/**` call is intercepted in the
+   * browser, so nothing reaches an upstream — but the server validates its
+   * environment at startup and would refuse to boot without them.
    *
-   * CI builds in its own step so this timeout covers only server startup
-   * rather than a cold `tsc` plus two Vite builds.
+   * The host is pinned to IPv4: a CI runner often resolves `localhost` to
+   * `::1` while the URL below is polled over IPv4, and the wait then times out
+   * with no error to point at. CI builds in its own step so this timeout
+   * covers only start-up.
    */
   webServer: {
-    command: isCI
-      ? `npx vite preview --port ${PORT} --strictPort --host ${HOST}`
-      : `npm run build && npx vite preview --port ${PORT} --strictPort --host ${HOST}`,
+    command: isCI ? `node server.mjs` : `npm run build && node server.mjs`,
+    env: {
+      PORT: String(PORT),
+      NEWSAPI_KEY: "e2e-placeholder",
+      GUARDIAN_KEY: "e2e-placeholder",
+      NYT_KEY: "e2e-placeholder",
+    },
     url: `http://${HOST}:${PORT}`,
     reuseExistingServer: !isCI,
     timeout: 120_000,
