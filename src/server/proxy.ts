@@ -3,7 +3,7 @@
 // knowledge of the `~/` mapping — so an aliased or extensionless import fails
 // to compile there and the function is silently never deployed. Resolving
 // without a path mapping is what keeps one proxy buildable by three
-// toolchains. See the import rules in CLAUDE.md.
+// toolchains. See the architecture notes in the README.
 import { getServerEnv } from "./env.js";
 import { isSourceId, UPSTREAMS } from "./upstreams.js";
 import type { SourceId } from "../types/source.js";
