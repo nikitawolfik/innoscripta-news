@@ -13,12 +13,31 @@ test.describe("mobile filters", () => {
 
     await page.getByRole("button", { name: /^Sources/ }).click();
     await page.getByRole("menuitemcheckbox", { name: "The Guardian" }).click();
+    await page.keyboard.press("Escape");
+
+    // The selection is a draft until submitted, so the URL is untouched here.
+    await expect(page).toHaveURL(/^[^?]*\?q=climate$/);
+
+    await page.getByRole("button", { name: "Apply" }).click();
 
     await expect(page).toHaveURL(/sources=guardian/);
-
-    await page.keyboard.press("Escape");
-    await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+  test("abandons the draft when the sheet is dismissed", async ({ page }) => {
+    await mockApi(page);
+    await page.goto("/?q=climate");
+
+    await page.getByRole("button", { name: "Open filters" }).click();
+    await page.getByRole("button", { name: /^Sources/ }).click();
+    await page.getByRole("menuitemcheckbox", { name: "The Guardian" }).click();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // Never committed, so the feed and the URL are as they were. That the
+    // reopened sheet forgets the selection is covered in filter-sheet.test.tsx.
+    await expect(page).toHaveURL(/^[^?]*\?q=climate$/);
   });
 
   test("the trigger counts only what the sheet contains", async ({ page }) => {

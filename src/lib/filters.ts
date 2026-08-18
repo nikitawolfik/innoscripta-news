@@ -86,6 +86,25 @@ export function countActiveFilterGroups(
   return groups.filter(Boolean).length;
 }
 
+/**
+ * Whether two filter sets would produce the same feed, which is what decides
+ * if an Apply button has anything to submit.
+ *
+ * The list fields are compared as sets: unchecking a category and rechecking it
+ * reorders the array without changing the request, and lighting up Apply for
+ * that would be a lie.
+ */
+export function filtersEqual(first: Filters, second: Filters): boolean {
+  return (
+    first.q === second.q &&
+    first.from === second.from &&
+    first.to === second.to &&
+    haveSameMembers(first.sources, second.sources) &&
+    haveSameMembers(first.categories, second.categories) &&
+    haveSameMembers(first.authors, second.authors)
+  );
+}
+
 export function toDateParam(date: Date): string {
   return format(date, DATE_PARAM_FORMAT);
 }
@@ -109,6 +128,15 @@ function parseListParam(value: string | null): string[] {
     .split(LIST_SEPARATOR)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+// Every list filter is deduplicated at its input, so equal length plus full
+// containment is enough — no need to sort a copy of each.
+function haveSameMembers(first: string[], second: string[]): boolean {
+  return (
+    first.length === second.length &&
+    first.every((value) => second.includes(value))
+  );
 }
 
 function isKnownCategory(value: string): boolean {

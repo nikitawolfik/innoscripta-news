@@ -20,6 +20,14 @@ function renderBar(filters: Filters = DEFAULT_FILTERS) {
   return setFilters;
 }
 
+/**
+ * Everything but the search box edits a draft, so a test that exercises a
+ * control has to submit it before anything reaches the feed.
+ */
+function applyDraft() {
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+}
+
 describe("FilterBar", () => {
   it("debounces the search input into a single patch", () => {
     const setFilters = renderBar();
@@ -48,6 +56,10 @@ describe("FilterBar", () => {
     fireEvent.change(authorInput, { target: { value: "Jane Smith" } });
     fireEvent.keyDown(authorInput, { key: "Enter" });
 
+    expect(setFilters).not.toHaveBeenCalled();
+
+    applyDraft();
+
     expect(setFilters).toHaveBeenCalledWith({ authors: ["Jane Smith"] });
   });
 
@@ -58,6 +70,7 @@ describe("FilterBar", () => {
       target: { value: "Marina Hyde" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    applyDraft();
 
     expect(setFilters).toHaveBeenCalledWith({ authors: ["Marina Hyde"] });
   });
@@ -70,6 +83,7 @@ describe("FilterBar", () => {
     // `author` param per name instead of a joined list.
     fireEvent.change(authorInput, { target: { value: "Smith, Jr." } });
     fireEvent.keyDown(authorInput, { key: "Enter" });
+    applyDraft();
 
     expect(setFilters).toHaveBeenCalledWith({ authors: ["Smith, Jr."] });
   });
@@ -84,6 +98,7 @@ describe("FilterBar", () => {
       target: { value: "John Doe" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    applyDraft();
 
     expect(setFilters).toHaveBeenCalledWith({
       authors: ["Jane Smith", "John Doe"],
@@ -97,6 +112,7 @@ describe("FilterBar", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Jane Smith" }));
+    applyDraft();
 
     expect(setFilters).toHaveBeenCalledWith({ authors: ["John Doe"] });
   });
@@ -118,16 +134,43 @@ describe("FilterBar", () => {
   it("resets to the defaults when filters are active", () => {
     const setFilters = renderBar({ ...DEFAULT_FILTERS, q: "climate" });
 
+    // Reset does not wait for Apply: clearing everything is unambiguous.
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
 
     expect(setFilters).toHaveBeenCalledWith(DEFAULT_FILTERS);
   });
 
-  it("hides the reset action when nothing is filtered", () => {
+  it("keeps Apply inert until the draft differs from the applied filters", () => {
+    renderBar();
+    const applyButton = screen.getByRole("button", { name: "Apply" });
+
+    expect(applyButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Filter by authors"), {
+      target: { value: "Marina Hyde" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(applyButton).toBeEnabled();
+  });
+
+  it("keeps Reset in place but inert when nothing is filtered", () => {
+    // Mounted either way: applying commits the draft and the filters through
+    // two stores, and unmounting on the render between them made the button
+    // blink and the row shift.
     renderBar();
 
-    expect(
-      screen.queryByRole("button", { name: "Reset" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reset" })).toBeDisabled();
+  });
+
+  it("enables Reset for a draft that has not been applied yet", () => {
+    renderBar();
+
+    fireEvent.change(screen.getByLabelText("Filter by authors"), {
+      target: { value: "Marina Hyde" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(screen.getByRole("button", { name: "Reset" })).toBeEnabled();
   });
 });

@@ -1,6 +1,7 @@
 import { FilterControls } from "~/features/filters/filter-controls";
 import { FilterSheet } from "~/features/filters/filter-sheet";
 import { SearchInput } from "~/features/filters/search-input";
+import { useDraftFilters } from "~/hooks/use-draft-filters";
 import { useMediaQuery } from "~/hooks/use-media-query";
 import { DESKTOP_MEDIA_QUERY } from "~/lib/breakpoints";
 import { cn } from "~/lib/utils";
@@ -24,6 +25,13 @@ export function FilterBar({ filters, setFilters }: Props) {
   // never reaches the open panel. Resizing past the breakpoint with the sheet
   // open would otherwise strand an overlay on a layout that has no sheet.
   const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY);
+  // Every control except search edits a draft. One Apply then costs one round
+  // of upstream requests instead of one per toggle — see the README on why
+  // that matters against metered APIs.
+  const { draft, setDraft, apply, reset, discard, isDirty } = useDraftFilters(
+    filters,
+    setFilters,
+  );
 
   return (
     <div
@@ -33,6 +41,8 @@ export function FilterBar({ filters, setFilters }: Props) {
       )}
     >
       <div className="flex items-center gap-2">
+        {/* Live, not drafted: search-as-you-type is the expected behaviour
+            and the debounce already collapses a keystroke burst. */}
         <SearchInput
           value={filters.q}
           // Replaces rather than pushes: a debounced search would otherwise
@@ -43,13 +53,23 @@ export function FilterBar({ filters, setFilters }: Props) {
           }
         />
         {isDesktop ? null : (
-          <FilterSheet filters={filters} setFilters={setFilters} />
+          <FilterSheet
+            filters={draft}
+            setFilters={setDraft}
+            onApply={apply}
+            onReset={reset}
+            onDiscard={discard}
+            isDirty={isDirty}
+          />
         )}
       </div>
       {/* Inline, not portaled — a CSS breakpoint is sufficient here. */}
       <FilterControls
-        filters={filters}
-        setFilters={setFilters}
+        filters={draft}
+        setFilters={setDraft}
+        onApply={apply}
+        onReset={reset}
+        isDirty={isDirty}
         className="mt-2 hidden flex-wrap items-center md:flex"
       />
     </div>
