@@ -12,6 +12,12 @@ const LEADING_PREPOSITION = /^(at\s+)/i;
  * attribute. Only the display string needs changing, so nothing is parsed out
  * of the prose: the machine-readable value is already there.
  *
+ * Times written into the prose itself — "9.30am BST: Germany ZEW confidence" —
+ * are deliberately left alone. Converting one means guessing which date it
+ * refers to, resolving an ambiguous abbreviation without a timezone database,
+ * and matching text that also holds prices and scores; a wrong result would be
+ * confidently wrong, where the published string names its own zone.
+ *
  * Runs on already-sanitized HTML. Re-serializing a safe tree is safe, whereas
  * transforming first and sanitizing after would risk the sanitizer stripping
  * what was just added.

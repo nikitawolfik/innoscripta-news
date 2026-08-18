@@ -144,11 +144,11 @@ Filter state → URL search params on "/", Zustand on "/feed"
 
 ### Routes
 
-| Route               | Filter state        | Purpose                                                         |
-| ------------------- | ------------------- | --------------------------------------------------------------- |
-| `/`                 | URL search params   | Search and browse everything. Shareable — the URL is the state  |
-| `/feed`             | Zustand (persisted) | Personalized feed; the filter bar **is** the preferences editor |
-| `/post/:source/:id` | —                   | Article detail; `id` is base64url-encoded (see below)           |
+| Route               | Filter state        | Purpose                                                                             |
+| ------------------- | ------------------- | ----------------------------------------------------------------------------------- |
+| `/`                 | URL search params   | Search and browse everything. Shareable — the URL is the state                      |
+| `/feed`             | Zustand (persisted) | Personalized feed; the filter bar **is** the preferences editor, committed by Apply |
+| `/post/:source/:id` | —                   | Article detail; `id` is base64url-encoded (see below)                               |
 
 Both feed routes render the **same** `<FilterBar>` and `<ArticleFeed>`. They
 differ only in which adapter hook supplies the `[filters, setFilters]` tuple —
@@ -436,6 +436,31 @@ and the virtualization.
 - **Only Guardian articles render full text.** The other two APIs return a
   summary plus a link by design, so the detail page shows what each source
   actually licenses.
+- **Body times are localized only where the source marked them up.** Guardian
+  liveblogs stamp each update in the paper's own timezone — "at 5.25am BST" —
+  but carry the real instant in an adjacent `datetime` attribute, so those are
+  rewritten to the reader's timezone. Times written into the prose itself
+  ("9.30am BST: Germany ZEW confidence") are left exactly as published.
+  Converting those would mean guessing which date they refer to, resolving an
+  ambiguous abbreviation without a timezone database (BST is both British Summer
+  Time and Bangladesh Standard Time), and pattern-matching third-party prose
+  that also contains prices and scores. A mis-converted time is confidently
+  wrong and invisible; the published string names its own zone and never
+  misleads.
+- **Filters are submitted, not applied live — and rate limits are most of the
+  reason.** Every control except the search box edits a draft that reaches the
+  feed only when Apply is pressed. Applying on each change is the more fashionable
+  choice and it was the original decision here, but each change is a new query
+  key, and each query key is a round of requests across every eligible source.
+  Configuring a date range, two sources and three categories that way costs
+  roughly seven rounds, six of them thrown away before anyone reads them — and
+  NYT allows five requests a minute, so a single considered filter change could
+  exhaust its budget on its own. One Apply costs one round. The search box stays
+  live because search-as-you-type is expected, and its debounce already collapses
+  a keystroke burst into one commit. Reset also bypasses the draft: clearing
+  everything is unambiguous and should not need a second click. Dismissing the
+  mobile sheet abandons the draft, since it covers the feed and unapplied
+  selections would otherwise sit invisible behind it.
 - **Row heights are fixed constants, not measured.** This keeps virtualization
   jitter-free at the cost of clamping titles and descriptions and reserving a
   fixed image slot.
