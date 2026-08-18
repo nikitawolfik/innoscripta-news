@@ -32,7 +32,7 @@ export function ArticleDetail({ article }: Props) {
   }
 
   return (
-    <article className="mx-auto max-w-prose py-6">
+    <article className="mx-auto max-w-prose">
       {/* Still a real link with an href, so a cold deep link, middle-click and
           open-in-new-tab all behave; the handler only intercepts the in-app
           case. */}

@@ -5,7 +5,7 @@ export function ArticleDetailSkeleton() {
     <div
       role="status"
       aria-label="Loading article"
-      className="mx-auto max-w-prose space-y-4 py-6"
+      className="mx-auto max-w-prose space-y-4"
     >
       <Skeleton className="h-4 w-32" />
       <Skeleton className="h-8 w-full" />
