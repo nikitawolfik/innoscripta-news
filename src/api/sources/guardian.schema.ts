@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { publishedAtSchema } from "~/api/published-at";
+
 const guardianFieldsSchema = z
   .object({
     trailText: z.string().optional(),
@@ -13,7 +15,7 @@ export const guardianContentSchema = z.object({
   id: z.string().min(1),
   webTitle: z.string().min(1),
   webUrl: z.url(),
-  webPublicationDate: z.string().min(1),
+  webPublicationDate: publishedAtSchema,
   sectionName: z.string().optional(),
   fields: guardianFieldsSchema,
 });

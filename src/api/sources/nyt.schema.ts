@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { publishedAtSchema } from "~/api/published-at";
+
 /**
  * NYT returns `multimedia` as an **object**, not the array older integrations
  * expect: `{ caption, credit, default: { url }, thumbnail: { url } }`. Declaring
@@ -24,7 +26,7 @@ export const nytArticleSchema = z.object({
   headline: z.object({
     main: z.string().min(1),
   }),
-  pub_date: z.string().min(1),
+  pub_date: publishedAtSchema,
   section_name: z.string().nullish(),
   byline: z
     .object({

@@ -137,7 +137,10 @@ describe("multi-source article batches", () => {
     ]);
   });
 
-  it("sorts an unparseable timestamp last instead of scrambling the batch", async () => {
+  it("drops an article whose timestamp will not parse", async () => {
+    // The card formats this value with date-fns, which throws on a date it
+    // cannot read — so an unparseable one has to fail validation rather than
+    // reach the feed and take the render down with it.
     useSuccessfulSourceHandlers({
       publishedAt: { newsapi: "yesterday, probably" },
     });
@@ -150,8 +153,9 @@ describe("multi-source article batches", () => {
     expect(batch.articles.map((article) => article.source)).toEqual([
       "guardian",
       "nyt",
-      "newsapi",
     ]);
+    // Counted, not silently swallowed: the other two sources still render.
+    expect(batch.degraded).toEqual([]);
   });
 });
 

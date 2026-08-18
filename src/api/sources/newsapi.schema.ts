@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { publishedAtSchema } from "~/api/published-at";
+
 export const newsApiArticleSchema = z.object({
   source: z.object({
     name: z.string().min(1),
@@ -9,7 +11,7 @@ export const newsApiArticleSchema = z.object({
   description: z.string().nullish(),
   url: z.url(),
   urlToImage: z.url().nullish(),
-  publishedAt: z.string().min(1),
+  publishedAt: publishedAtSchema,
 });
 
 export const newsApiSearchResponseSchema = z.object({
