@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const guardianFieldsSchema = z
+const guardianFieldsSchema = z
   .object({
     trailText: z.string().optional(),
     thumbnail: z.string().optional(),

@@ -50,7 +50,7 @@ export const newsApiClient: SourceClient = {
   fetchById: null,
 };
 
-export function newsApiUnsupportedReason(filters: Filters): string | null {
+function newsApiUnsupportedReason(filters: Filters): string | null {
   if (filters.authors.length > 0) {
     return "NewsAPI cannot filter by author";
   }
@@ -154,7 +154,7 @@ export function selectNewsApiEndpoint(
   return filters.categories.length > 0 ? "top-headlines" : "everything";
 }
 
-export function buildNewsApiSearchParams(
+function buildNewsApiSearchParams(
   filters: Filters,
   page: number,
   endpoint = selectNewsApiEndpoint(filters),

@@ -14,6 +14,15 @@ export default defineConfig(({ mode }) => ({
     tailwindcss(),
     ...(mode === "test" ? [] : [apiProxyPlugin()]),
   ],
+  build: {
+    // The default warns at 500 kB of *raw* JavaScript. The entry chunk is
+    // ~200 kB gzipped, which is what a reader actually downloads, and it is
+    // React plus the router, query client, virtualizer, Radix primitives and
+    // zod — no single passenger worth evicting. The detail route is already
+    // split out; further splitting would defer the filter bar's calendar,
+    // which is not worth the render-timing complexity here.
+    chunkSizeWarningLimit: 700,
+  },
   resolve: {
     alias: {
       "~": fileURLToPath(new URL("./src", import.meta.url)),

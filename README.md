@@ -1,69 +1,132 @@
 # News Aggregator
 
-A news reader that merges articles from three public APIs — **NewsAPI.org**,
-**The Guardian** and **The New York Times** — into one normalized, filterable,
-virtualized feed.
+A news reader that merges **NewsAPI.org**, **The Guardian** and **The New York
+Times** into one normalized, filterable, virtualized feed.
 
-Built with React 19, TypeScript, Vite and Tailwind CSS v4.
-
-> Every phase of the build is complete; the table at the end lists them.
+React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query · Playwright
 
 ---
 
-## Quick start
+## Run it
 
 ```bash
+cp .env.example .env    # add the three keys below
 npm install
-cp .env.example .env   # add your three API keys
-npm run dev
+npm run dev             # http://localhost:5173
 ```
 
-Keys are free and take a few minutes each:
+Or in Docker, which is how the brief asks for it to run:
 
-| Variable       | Where to get it                               |
+```bash
+cp .env.example .env
+docker compose up --build    # http://localhost:8080
+```
+
+| Variable       | Free key from                                 |
 | -------------- | --------------------------------------------- |
 | `NEWSAPI_KEY`  | https://newsapi.org/register                  |
 | `GUARDIAN_KEY` | https://open-platform.theguardian.com/access/ |
 | `NYT_KEY`      | https://developer.nytimes.com/get-started     |
 
-These are **not** prefixed with `VITE_` on purpose — they are read only by the
-server-side proxy and never reach the browser bundle. See
-[API keys and CORS](#api-keys-and-cors).
+The keys are **not** `VITE_`-prefixed on purpose: they are read only by the
+server-side proxy and never reach the browser bundle.
 
-### Scripts
+### Verify it
 
-| Command                 | What it does                        |
-| ----------------------- | ----------------------------------- |
-| `npm run dev`           | Vite dev server                     |
-| `npm run build`         | Type-check and build for production |
-| `npm run preview`       | Serve the production build          |
-| `npm run typecheck`     | `tsc -b --noEmit`                   |
-| `npm run lint`          | oxlint                              |
-| `npm run format`        | Prettier (sorts Tailwind classes)   |
-| `npm run test`          | Unit and component tests            |
-| `npm run test:coverage` | Same, with coverage thresholds      |
-| `npm run e2e`           | Playwright end-to-end tests         |
+```bash
+npm run lint          # oxlint
+npm run typecheck     # tsc -b --noEmit
+npm run test          # 144 unit + component tests
+npm run e2e           # 36 Playwright specs, desktop + phone
+```
+
+**None of the tests need API keys** — every upstream is mocked, so the suite is
+runnable before you sign up for anything and cannot be made flaky by an API
+metered at five requests a minute.
 
 ---
 
-## Source selection
+## Read this before reviewing
 
-The brief lists seven data sources. **Only three of them are actually usable**,
-and they are the three this project integrates. The others were ruled out after
-checking:
+Four things about this codebase are deliberate and would otherwise look like
+mistakes.
 
-| Listed source      | Verdict                                                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **NewsAPI**        | ✅ Same product as "NewsAPI.org" below — the list double-counts it                                                                                      |
-| **OpenNews**       | ❌ A journalism nonprofit (Knight-Mozilla). No article API exists                                                                                       |
-| **NewsCred**       | ❌ An enterprise content-marketing platform, now Optimizely/Welcome. No self-serve key                                                                  |
-| **The Guardian**   | ✅ Integrated. The most permissive of the three, and the only one returning full article body text                                                      |
-| **New York Times** | ✅ Integrated. Article Search API                                                                                                                       |
-| **BBC News**       | ❌ No public article API. RSS feeds exist but have no search, no categories and no pagination, so they can't participate in a filterable paginated feed |
-| **NewsAPI.org**    | ✅ Integrated                                                                                                                                           |
+### 1. There is server-side code in a frontend project
 
-So "choose at least three" resolves to exactly three real options, which is why
-the lineup isn't a preference so much as the only viable set.
+`src/server/` holds a ~125-line proxy. It is not scope creep — it is the
+smallest thing that makes a client-only app work:
+
+- **NewsAPI's free tier refuses browser origins** (`corsNotAllowed`). A pure SPA
+  works on localhost and breaks the moment it is served from a container or a
+  deployment.
+- **Keys must not ship in the bundle.** Anything `VITE_`-prefixed is compiled
+  into public JavaScript.
+
+It is written once and mounted by three thin adapters — Vite middleware, a
+Vercel function, a Node server for the container — so the routing table cannot
+drift between environments. It holds no state and carries no unit tests, both
+deliberately; see [the proxy section](#this-proxy-is-a-workaround-not-an-architecture).
+
+### 2. Sources decline filters instead of returning empty results
+
+The three APIs disagree about what they support, and each disagreement was
+verified against the live API rather than taken from documentation. Where a
+source cannot honour a filter, it **opts out with a reason shown in the UI**
+rather than issuing a query that quietly returns nothing.
+
+| Limitation                                               | Consequence                                                     |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| NewsAPI has no author parameter                          | Excluded from author searches                                   |
+| NewsAPI `/everything` requires a keyword                 | Sits out the unfiltered feed                                    |
+| NewsAPI caps at 100 results and ~30 days of history      | Pagination stops at the ceiling rather than erroring mid-scroll |
+| NYT returns zero for **any** `fq` query on the free tier | Category, author and by-id lookup declared unsupported          |
+| Only Guardian licenses full body text                    | Others show a summary and link out                              |
+
+The detail is in [Handling three APIs that disagree](#handling-three-apis-that-disagree).
+
+### 3. Known limitations
+
+- **NYT Article Search is intermittently empty.** The same request alternates
+  between ~10,000 hits and `docs: null`, with no error and no `429`. Not quota —
+  Most Popular returned 20 articles while Article Search returned zero on the
+  same key in the same run. The feed degrades per source and names what dropped
+  out.
+- **NYT category and author filters are unavailable** on this API tier, because
+  every `fq` query returns nothing. Guardian covers both; NewsAPI covers
+  categories.
+- **A NewsAPI article cannot be opened from a cold deep link.** Its articles
+  carry no identifier, only a URL. Clicking through from the feed always works;
+  a shared link explains itself rather than failing.
+- **Feed ordering is chronological within a batch, not across batches.**
+  Re-sorting the whole accumulated list would make rows jump under the reader in
+  a virtualized list. Doing it properly needs a backend index.
+- **The e2e suite is mocked only.** Deliberate: see [Testing](#testing).
+
+### 4. What was deliberately removed
+
+Judgement here is as much about what is absent as what is present:
+
+- **An in-process cache and circuit breaker** in the proxy — real caching and
+  quota management belong in a backend, shared across users and surviving
+  restarts. Half-solving it per process behaved differently on Vercel than in
+  Docker.
+- **A duplicated exclusion-reason table** in the registry, which had already
+  drifted from the clients it described.
+- **Three copies of the feed row height**, which had drifted far enough to clip
+  card titles.
+
+---
+
+## Scope
+
+Required by the brief and implemented: keyword search; filtering by date,
+category and source; a personalized feed of preferred sources, categories and
+authors; mobile-responsive layout; React with TypeScript; at least three of the
+listed data sources; Docker with documentation; DRY/KISS/SOLID.
+
+Added beyond the brief, and flagged so required work is distinguishable from
+extra: the article detail page, both test suites, Vercel deployment and dark
+mode.
 
 ---
 
@@ -113,6 +176,27 @@ DRY and KISS show up mostly as things that were **removed**: an in-process cache
 and circuit breaker deleted from the proxy, a duplicated exclusion-reason table
 deleted from the registry, and three copies of the feed row height collapsed
 into one module after they drifted apart.
+
+---
+
+## Source selection
+
+The brief lists seven data sources. **Only three of them are actually usable**,
+and they are the three this project integrates. The others were ruled out after
+checking:
+
+| Listed source      | Verdict                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **NewsAPI**        | ✅ Same product as "NewsAPI.org" below — the list double-counts it                                                                                      |
+| **OpenNews**       | ❌ A journalism nonprofit (Knight-Mozilla). No article API exists                                                                                       |
+| **NewsCred**       | ❌ An enterprise content-marketing platform, now Optimizely/Welcome. No self-serve key                                                                  |
+| **The Guardian**   | ✅ Integrated. The most permissive of the three, and the only one returning full article body text                                                      |
+| **New York Times** | ✅ Integrated. Article Search API                                                                                                                       |
+| **BBC News**       | ❌ No public article API. RSS feeds exist but have no search, no categories and no pagination, so they can't participate in a filterable paginated feed |
+| **NewsAPI.org**    | ✅ Integrated                                                                                                                                           |
+
+So "choose at least three" resolves to exactly three real options, which is why
+the lineup isn't a preference so much as the only viable set.
 
 ---
 
@@ -188,38 +272,6 @@ A rate-limited source degrades the feed rather than breaking it: the other two
 keep rendering, and the UI names the paused source with a live countdown.
 
 ---
-
-## Why article ids are encoded in the URL
-
-Article links look like `/post/guardian/d29ybGQvMjAyNi9hdWcvMTgv…` rather than
-carrying the source's own identifier. That is deliberate.
-
-Because the merge happens **on the frontend**, one route has to address articles
-from every source — and the three disagree about what an id even is:
-
-| Source   | Native id                                                                       |
-| -------- | ------------------------------------------------------------------------------- |
-| Guardian | `world/2026/aug/18/europe-wildfires` — a path, full of slashes                  |
-| NYT      | `nyt://article/798697fc-12fc-5fed-a4db-ac3b0739a741` — contains a scheme, `://` |
-| NewsAPI  | no id at all; only the article URL, itself full of `/`, `?` and `#`             |
-
-Dropped into a path segment, each breaks in its own way: Guardian's slashes turn
-one segment into five, NYT's `://` is mangled differently by Vite's dev server,
-nginx-style path normalization and Vercel's router, and a raw URL brings query
-and fragment delimiters that end the path early. Percent-encoding helps but is
-not reliably preserved — several layers normalize `%2F` back to `/` before the
-router sees it.
-
-So ids are **base64url-encoded into one opaque, uniform token**: no slashes, no
-scheme, no reserved characters, identical in shape whatever the source. The
-route stays a plain `/post/:source/:id`, and `encodeArticleId` /
-`decodeArticleId` are a tested round-trip pair — the tests cover exactly the
-slash and `://` cases that motivated it.
-
-The trade-off is readability: the URL no longer shows the article slug. For a
-shared link that is a fair price for one that survives three routers and three
-id formats, and an undecodable token degrades to "article not found" rather
-than a crash.
 
 ## Handling three APIs that disagree
 
@@ -315,6 +367,40 @@ the source and saying so is the honest version.
 
 ---
 
+## Why article ids are encoded in the URL
+
+Article links look like `/post/guardian/d29ybGQvMjAyNi9hdWcvMTgv…` rather than
+carrying the source's own identifier. That is deliberate.
+
+Because the merge happens **on the frontend**, one route has to address articles
+from every source — and the three disagree about what an id even is:
+
+| Source   | Native id                                                                       |
+| -------- | ------------------------------------------------------------------------------- |
+| Guardian | `world/2026/aug/18/europe-wildfires` — a path, full of slashes                  |
+| NYT      | `nyt://article/798697fc-12fc-5fed-a4db-ac3b0739a741` — contains a scheme, `://` |
+| NewsAPI  | no id at all; only the article URL, itself full of `/`, `?` and `#`             |
+
+Dropped into a path segment, each breaks in its own way: Guardian's slashes turn
+one segment into five, NYT's `://` is mangled differently by Vite's dev server,
+nginx-style path normalization and Vercel's router, and a raw URL brings query
+and fragment delimiters that end the path early. Percent-encoding helps but is
+not reliably preserved — several layers normalize `%2F` back to `/` before the
+router sees it.
+
+So ids are **base64url-encoded into one opaque, uniform token**: no slashes, no
+scheme, no reserved characters, identical in shape whatever the source. The
+route stays a plain `/post/:source/:id`, and `encodeArticleId` /
+`decodeArticleId` are a tested round-trip pair — the tests cover exactly the
+slash and `://` cases that motivated it.
+
+The trade-off is readability: the URL no longer shows the article slug. For a
+shared link that is a fair price for one that survives three routers and three
+id formats, and an undecodable token degrades to "article not found" rather
+than a crash.
+
+---
+
 ## On the UI layer
 
 The interface uses **shadcn/ui**, which is why it looks presentable without any
@@ -353,75 +439,14 @@ and the virtualization.
 - **Row heights are fixed constants, not measured.** This keeps virtualization
   jitter-free at the cost of clamping titles and descriptions and reserving a
   fixed image slot.
+- **The entry bundle is ~200 kB gzipped** and Vite's raw-byte warning threshold
+  is raised to match, with the reasoning in `vite.config.ts`. The detail route
+  is code-split; splitting further would defer the filter bar's calendar, which
+  is not worth the render-timing complexity at this size.
 - **The proxy carries no unit tests.** Testing effort is spent on the frontend,
   which is what this project is. The proxy has no branching logic worth pinning
   down, and the behaviour that matters — a source rate-limiting or failing while
   the others keep rendering — is covered end-to-end where a user would see it.
-
----
-
-## Running with Docker
-
-```bash
-cp .env.example .env    # fill in the three keys
-docker compose up --build
-```
-
-Then open <http://localhost:8080>.
-
-Compose reads `.env` from the project directory. If a key is missing it stops
-with a message naming it, rather than starting a container that cannot serve
-anything.
-
-Without Compose:
-
-```bash
-docker build -t innoscripta-news .
-docker run --rm -p 8080:8080 \
-  -e NEWSAPI_KEY=... -e GUARDIAN_KEY=... -e NYT_KEY=... \
-  innoscripta-news
-```
-
-To use a different port, set `PORT` — Compose maps it to the container's 8080:
-
-```bash
-PORT=3000 docker compose up --build
-```
-
-### How the image is put together
-
-- **Multi-stage.** The build stage installs from the lockfile with `npm ci` and
-  runs the same `npm run build` used locally; the runtime stage copies only the
-  output.
-- **No `node_modules` in the final image.** The server build bundles its only
-  dependency, and `server.mjs` otherwise imports `node:` builtins alone, so the
-  runtime stage is the Node base plus roughly a megabyte of assets. Nothing is
-  installed at run time.
-- **Non-root.** Runs as the `node` user that `node:22-alpine` provides.
-- **Keys at run time only.** They are passed as environment variables and never
-  appear in a build argument or an image layer. The server validates them at
-  startup and refuses to boot without them — correct for a container, where a
-  half-working process is worse than a failed one.
-- **Health check.** Polls the app over HTTP using Node's built-in `fetch`, so
-  the image needs no `curl`.
-
-## Deploying to Vercel
-
-Import the repository, then set `NEWSAPI_KEY`, `GUARDIAN_KEY` and `NYT_KEY` as
-project environment variables. No build configuration is needed:
-`api/[...path].ts` is picked up as a function automatically, and `vercel.json`
-routes everything else to `index.html` for client-side routing.
-
-The same proxy handler runs in all three environments — Vite middleware in
-development, a Vercel function in production, and the Node server in the
-container — so the routing table cannot drift between them.
-
-## Continuous integration
-
-`.github/workflows/ci.yml` runs lint, type-check, the test suite and a
-production build on every push, plus a second job that builds the Docker image
-so a broken `Dockerfile` fails in CI rather than on a reviewer's machine. No
-secrets are required: the tests mock every upstream.
 
 ---
 
@@ -466,17 +491,66 @@ A few cases are worth calling out because they are the ones that break quietly:
 - a NewsAPI article opened cold explains itself rather than spinning
 - the mobile sheet opens, applies a filter and closes at a real phone viewport
 
-## Build status
+---
 
-| Phase | Scope                                      | Status  |
-| ----- | ------------------------------------------ | ------- |
-| P0    | Tooling, aliases, routing shell, theming   | ✅ Done |
-| P1    | Proxy handler + dev/Vercel/Docker adapters | ✅ Done |
-| P2    | `Article` model + Guardian client          | ✅ Done |
-| P3    | Infinite query + virtualized feed          | ✅ Done |
-| P4    | NYT + NewsAPI + capability matrix          | ✅ Done |
-| P5    | Filter bar, URL-driven `/`                 | ✅ Done |
-| P6    | Preferences-driven `/feed`                 | ✅ Done |
-| P7    | Article detail page                        | ✅ Done |
-| P8    | Docker, Vercel, documentation              | ✅ Done |
-| P9    | Unit, component and e2e test suites        | ✅ Done |
+## Running with Docker
+
+Compose reads `.env` from the project directory. If a key is missing it stops
+with a message naming it, rather than starting a container that cannot serve
+anything.
+
+Without Compose:
+
+```bash
+docker build -t innoscripta-news .
+docker run --rm -p 8080:8080 \
+  -e NEWSAPI_KEY=... -e GUARDIAN_KEY=... -e NYT_KEY=... \
+  innoscripta-news
+```
+
+To use a different port, set `PORT` — Compose maps it to the container's 8080:
+
+```bash
+PORT=3000 docker compose up --build
+```
+
+### How the image is put together
+
+- **Multi-stage.** The build stage installs from the lockfile with `npm ci` and
+  runs the same `npm run build` used locally; the runtime stage copies only the
+  output.
+- **No `node_modules` in the final image.** The server build bundles its only
+  dependency, and `server.mjs` otherwise imports `node:` builtins alone, so the
+  runtime stage is the Node base plus roughly a megabyte of assets. Nothing is
+  installed at run time.
+- **Non-root.** Runs as the `node` user that `node:22-alpine` provides.
+- **Keys at run time only.** They are passed as environment variables and never
+  appear in a build argument or an image layer. The server validates them at
+  startup and refuses to boot without them — correct for a container, where a
+  half-working process is worse than a failed one.
+- **Health check.** Polls the app over HTTP using Node's built-in `fetch`, so
+  the image needs no `curl`.
+
+---
+
+## Deploying to Vercel
+
+Import the repository, then set `NEWSAPI_KEY`, `GUARDIAN_KEY` and `NYT_KEY` as
+project environment variables. No build configuration is needed:
+`api/[...path].ts` is picked up as a function automatically, and `vercel.json`
+routes everything else to `index.html` for client-side routing.
+
+The same proxy handler runs in all three environments — Vite middleware in
+development, a Vercel function in production, and the Node server in the
+container — so the routing table cannot drift between them.
+
+---
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs lint, type-check, the test suite and a
+production build on every push, plus a second job that builds the Docker image
+so a broken `Dockerfile` fails in CI rather than on a reviewer's machine. No
+secrets are required: the tests mock every upstream.
+
+---

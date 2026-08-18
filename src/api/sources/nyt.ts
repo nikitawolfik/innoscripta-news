@@ -50,7 +50,7 @@ export const nytClient: SourceClient = {
   fetchById: null,
 };
 
-export function nytUnsupportedReason(filters: Filters): string | null {
+function nytUnsupportedReason(filters: Filters): string | null {
   if (filters.categories.length > 0) {
     return "The New York Times cannot filter by category on this API tier";
   }
@@ -81,7 +81,7 @@ async function searchNyt(
   };
 }
 
-export function buildNytSearchParams(
+function buildNytSearchParams(
   filters: Filters,
   upstreamPage: number,
 ): URLSearchParams {
@@ -106,7 +106,7 @@ export function buildNytSearchParams(
   return searchParams;
 }
 
-export function toNytDate(value: string): string {
+function toNytDate(value: string): string {
   return format(parseISO(value), "yyyyMMdd");
 }
 
