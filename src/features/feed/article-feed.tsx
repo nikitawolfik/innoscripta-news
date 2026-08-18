@@ -121,7 +121,16 @@ export function ArticleFeed({ filters, onResetFilters }: Props) {
   }
 
   if (articles.length === 0) {
-    return <FeedEmpty onReset={onResetFilters} />;
+    // The notice renders here too. An empty feed is most often empty *because*
+    // sources declined the filters, so this is exactly when the reader needs
+    // the reason — "no articles match" on its own reads like there is nothing
+    // to find, rather than that nothing was asked.
+    return (
+      <div>
+        <ExcludedSourcesNotice failures={degraded} onRetry={resume} />
+        <FeedEmpty onReset={onResetFilters} />
+      </div>
+    );
   }
 
   let tail: React.ReactNode = null;

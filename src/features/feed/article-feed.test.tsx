@@ -210,3 +210,30 @@ describe("ArticleFeed", () => {
     );
   }, 10_000);
 });
+
+describe("ArticleFeed with every source excluded", () => {
+  it("explains why the feed is empty instead of only saying it is", async () => {
+    // Only NewsAPI selected, plus an author it cannot filter by: nothing is
+    // eligible, so there are no articles and the reason is the whole story.
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <MemoryRouter>
+          <ArticleFeed
+            filters={{
+              ...DEFAULT_FILTERS,
+              sources: ["newsapi"],
+              authors: ["Jane Doe"],
+            }}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByText("NewsAPI cannot filter by author"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/No articles match these filters/i),
+    ).toBeInTheDocument();
+  });
+});
