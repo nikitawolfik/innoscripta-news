@@ -1,6 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -14,10 +14,30 @@ interface Props {
 }
 
 export function ArticleDetail({ article }: Props) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  // React Router marks the first entry of a session "default". Anything else
+  // means the reader arrived from the feed, so stepping back through history
+  // returns them to it with their filters and scroll position intact —
+  // navigating to "/" would silently discard both.
+  const arrivedFromApp = location.key !== "default";
+
+  function handleBack(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!arrivedFromApp) {
+      return;
+    }
+
+    event.preventDefault();
+    navigate(-1);
+  }
+
   return (
     <article className="mx-auto max-w-prose py-6">
+      {/* Still a real link with an href, so a cold deep link, middle-click and
+          open-in-new-tab all behave; the handler only intercepts the in-app
+          case. */}
       <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-        <Link to="/">
+        <Link to="/" onClick={handleBack}>
           <ArrowLeft aria-hidden="true" />
           Back to the feed
         </Link>

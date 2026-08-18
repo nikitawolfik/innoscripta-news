@@ -6,9 +6,7 @@ virtualized feed.
 
 Built with React 19, TypeScript, Vite and Tailwind CSS v4.
 
-> **Status: in progress.** The build is phased, and sections are marked ✅ built
-> or 🚧 planned so nothing here overstates what currently runs. Everything below
-> is working today except the end-to-end suite.
+> Every phase of the build is complete; the table at the end lists them.
 
 ---
 
@@ -34,14 +32,17 @@ server-side proxy and never reach the browser bundle. See
 
 ### Scripts
 
-| Command             | What it does                        |
-| ------------------- | ----------------------------------- |
-| `npm run dev`       | Vite dev server                     |
-| `npm run build`     | Type-check and build for production |
-| `npm run preview`   | Serve the production build          |
-| `npm run typecheck` | `tsc -b --noEmit`                   |
-| `npm run lint`      | oxlint                              |
-| `npm run format`    | Prettier (sorts Tailwind classes)   |
+| Command                 | What it does                        |
+| ----------------------- | ----------------------------------- |
+| `npm run dev`           | Vite dev server                     |
+| `npm run build`         | Type-check and build for production |
+| `npm run preview`       | Serve the production build          |
+| `npm run typecheck`     | `tsc -b --noEmit`                   |
+| `npm run lint`          | oxlint                              |
+| `npm run format`        | Prettier (sorts Tailwind classes)   |
+| `npm run test`          | Unit and component tests            |
+| `npm run test:coverage` | Same, with coverage thresholds      |
+| `npm run e2e`           | Playwright end-to-end tests         |
 
 ---
 
@@ -419,16 +420,44 @@ secrets are required: the tests mock every upstream.
 
 ## Testing
 
-🚧 **Planned.** Vitest with Testing Library for unit and component coverage, and
-Playwright for end-to-end.
+```bash
+npm run test           # unit + component (vitest, jsdom)
+npm run test:coverage  # same, with thresholds enforced
+npm run e2e            # end-to-end (playwright, chromium)
+```
 
-The e2e suite runs **against mocked responses only**, sharing fixtures with the
-unit tests. This is a deliberate call: these are public APIs with strict rate
-limits (NYT allows 5 requests/minute), so a suite hitting them live would be
-non-deterministic, slow, unable to assert on specific content — news changes
-hourly — and unrunnable by anyone without their own API keys.
+**No API keys are needed for any of it**, which is the point: a reviewer can
+clone the repo and run the whole suite before signing up for anything.
 
----
+Unit and component tests use Vitest with Testing Library, with MSW intercepting
+`fetch` so the real client → validate → normalize chain is exercised rather than
+a stubbed module. End-to-end tests use Playwright against the production build,
+with every proxied call intercepted in the browser.
+
+Both layers read the **same captured fixtures** in `tests/fixtures/`, so they
+cannot disagree about what an API returns. Those fixtures are parsed by the real
+zod schemas in a dedicated test — the guard that was missing when NYT shipped
+broken, because its tests asserted against a hand-written shape the API does not
+actually return and therefore agreed with the code while every live request
+failed. If a fixture stops parsing, the upstream changed: fix the schema, do not
+edit the fixture to match.
+
+The e2e suite is **mocked only, deliberately**. These are public APIs with
+strict rate limits — NYT allows five requests a minute — so a suite hitting them
+live would be non-deterministic, would be unable to assert on specific articles
+since the news changes hourly, and would be unrunnable by anyone without their
+own keys. What it costs is the assurance that our assumptions about each API
+still hold, which is why the fixtures are captured from real responses and
+schema-checked rather than invented.
+
+A few cases are worth calling out because they are the ones that break quietly:
+
+- a rate-limited source degrades the feed instead of emptying it, and the spec
+  asserts the **request count** afterwards — an unguarded `429` becomes a
+  request storm that looks perfectly healthy on screen
+- a filter a source cannot honour produces a named reason, not a silent gap
+- a NewsAPI article opened cold explains itself rather than spinning
+- the mobile sheet opens, applies a filter and closes at a real phone viewport
 
 ## Build status
 
@@ -443,4 +472,4 @@ hourly — and unrunnable by anyone without their own API keys.
 | P6    | Preferences-driven `/feed`                 | ✅ Done |
 | P7    | Article detail page                        | ✅ Done |
 | P8    | Docker, Vercel, documentation              | ✅ Done |
-| P9    | Unit, component and e2e test suites        | 🚧      |
+| P9    | Unit, component and e2e test suites        | ✅ Done |

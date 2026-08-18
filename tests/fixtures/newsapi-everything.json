@@ -1,0 +1,32 @@
+{
+  "status": "ok",
+  "totalResults": 22030,
+  "articles": [
+    {
+      "source": {
+        "id": "the-irish-times",
+        "name": "The Irish Times"
+      },
+      "author": "John Gibbons",
+      "title": "John Gibbons: Ireland needs an agriculture policy. Instead it has an agri-food industry",
+      "description": "Denmark no longer has an agriculture minister – Ireland should follow suit",
+      "url": "https://www.irishtimes.com/opinion/2026/08/17/john-gibbons-ireland-does-not-have-an-agriculture-policy-it-has-an-agri-food-industry-which-calls-the-shots/",
+      "urlToImage": "https://www.irishtimes.com/resizer/v2/M6CBFNC7MFCU3OQQ6CCYC7NG4Q.jpg?smart=true&auth=30cf497b70efe207343b65744e3ab80f05449ff1b1f8a89c4d0a70c088bfb07c&width=1200&height=630",
+      "publishedAt": "2026-08-17T05:05:00Z",
+      "content": "Earlier this summer, Denmark, a country of similar population to Ireland, did the unthinkable: it formally scrapped its century-old agriculture ministry, the first EU country to do so.\r\nIn a move tha… [+5995 chars]"
+    },
+    {
+      "source": {
+        "id": "focus",
+        "name": "Focus"
+      },
+      "author": null,
+      "title": "Hitzewellen: Jede 1,3 Grad mehr erhöhen biologisches Alter bis zu 11 Tage",
+      "description": null,
+      "url": "https://www.focus.de/gesundheit/longevity/hitzewellen-jede-1-3-grad-mehr-erhoehen-biologisches-alter-bis-zu-11-tage_9e16722c-2dd5-47ad-84a1-dbb9cd5d477b.html",
+      "urlToImage": null,
+      "publishedAt": "2026-08-17T05:03:00Z",
+      "content": "Die Hitzewelle 2026 hat nach aktuellen Schätzungen beinahe 12.000 Menschen in Deutschland das Leben gekostet. Hohe Temperaturen hinterlassen auch langfristige Spuren im Körper.\r\nEine Studie aus Taiwa… [+2662 chars]"
+    }
+  ]
+}

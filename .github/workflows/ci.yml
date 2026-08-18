@@ -16,9 +16,29 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      # No API keys needed: the suite mocks every upstream.
-      - run: npm run test
+      # No API keys needed: every upstream is mocked.
+      - run: npm run test:coverage
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Playwright builds and previews the app itself; requests are intercepted
+      # in the browser, so no API keys are needed here either.
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
   docker:
     runs-on: ubuntu-latest
